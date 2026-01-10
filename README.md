@@ -157,19 +157,6 @@ A modern, full-featured appointment booking system built with Laravel, Livewire,
 
 ---
 
-## 🔐 Default Accounts
-
-After seeding, the following accounts are available:
-
-| Role            | Email                       | Password   |
-| --------------- | --------------------------- | ---------- |
-| **Super Admin** | `admin@ampletherapy.org.uk` | `password` |
-| **Staff**       | `hello@ampletherapy.org.uk` | `password` |
-| **Customer**    | `john@example.com`          | `password` |
-| **Customer**    | `jane@example.com`          | `password` |
-
----
-
 ## 📁 Project Structure
 
 ```
