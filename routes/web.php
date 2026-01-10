@@ -9,7 +9,7 @@ use App\Livewire\Admin\Staff\Index as StaffIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
