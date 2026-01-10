@@ -285,18 +285,24 @@ class Index extends Component
             return collect();
         }
 
-        return User::role('Staff')
+        $query = User::role('Staff')
             ->active()
-            ->whereHas('services', fn($q) => $q->where('services.id', $this->service_id))
-            ->orderBy('name')
-            ->get();
+            ->whereHas('services', fn($q) => $q->where('services.id', $this->service_id));
+
+        if (auth()->user()->hasRole('Staff') && !auth()->user()->hasRole('Super Admin')) {
+            $query->where('id', auth()->id());
+        }
+
+        return $query->orderBy('name')->get();
     }
 
     public function render()
     {
         $appointments = Appointment::query()
             ->with(['service', 'user'])
+            ->with(['service', 'user'])
             ->when(auth()->user()->hasRole('Customer'), fn($q) => $q->where('customer_email', auth()->user()->email))
+            ->when(auth()->user()->hasRole('Staff') && !auth()->user()->hasRole('Super Admin'), fn($q) => $q->where('user_id', auth()->id()))
             ->when($this->search, fn($q) => $q->where(function ($q2) {
                 $q2->where('customer_name', 'like', "%{$this->search}%")
                     ->orWhere('customer_email', 'like', "%{$this->search}%");
@@ -308,7 +314,13 @@ class Index extends Component
             ->paginate(15);
 
         $services = Service::active()->orderBy('name')->get();
-        $staffMembers = User::role('Staff')->active()->orderBy('name')->get();
+        $services = Service::active()->orderBy('name')->get();
+        // Consolidate Staff query logic - allow Super Admins to see all, Staff to see only themselves
+        $staffQuery = User::role('Staff')->active()->orderBy('name');
+        if (auth()->user()->hasRole('Staff') && !auth()->user()->hasRole('Super Admin')) {
+            $staffQuery->where('id', auth()->id());
+        }
+        $staffMembers = $staffQuery->get();
 
         return view('livewire.admin.appointments.index', [
             'appointments' => $appointments,

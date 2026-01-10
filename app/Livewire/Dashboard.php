@@ -32,24 +32,32 @@ class Dashboard extends Component
         }
 
         // Admin Stats
-        $todayCount = Appointment::today()->count();
+        $query = Appointment::query();
+
+        // Filter for Staff (who are not Super Admin)
+        if ($user->hasRole('Staff') && !$user->hasRole('Super Admin')) {
+            $query->where('user_id', $user->id);
+        }
+
+        $todayCount = (clone $query)->today()->count();
 
         // "Pending this week"
-        $pendingThisWeekCount = Appointment::thisWeek()
+        $pendingThisWeekCount = (clone $query)->thisWeek()
             ->where('status', 'booked')
             ->count();
 
         // "Confirmed upcoming week" (Next 7 days including today)
-        $confirmedUpcomingCount = Appointment::where('status', 'confirmed')
+        $confirmedUpcomingCount = (clone $query)->where('status', 'confirmed')
             ->whereBetween('starts_at', [now(), now()->addDays(7)])
             ->count();
 
         // Reset to showing confirmed appointments only, as requested
-        $upcomingAppointments = Appointment::with(['service', 'user'])
+        $upcomingAppointments = (clone $query)->with(['service', 'user'])
             ->where('status', 'confirmed')
             ->upcoming()
             ->take(5)
             ->get();
+
         $totalServices = Service::active()->count();
 
         return view('livewire.dashboard', [

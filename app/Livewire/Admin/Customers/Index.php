@@ -132,6 +132,13 @@ class Index extends Component
     {
         $customers = User::query()
             ->role('Customer')
+            ->when(auth()->user()->hasRole('Staff') && !auth()->user()->hasRole('Super Admin'), function ($q) {
+                $q->whereIn('email', function ($subQ) {
+                    $subQ->select('customer_email')
+                        ->from('appointments')
+                        ->where('user_id', auth()->id());
+                });
+            })
             ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->orderBy('name')
             ->paginate(15);

@@ -26,6 +26,7 @@
             </div>
 
             {{-- Booking --}}
+            @hasrole('Customer|Super Admin')
             <div class="mb-4">
                 <div class="text-[11px] font-medium text-zinc-400 uppercase tracking-wide px-2 mb-1">
                     {{ __('Booking') }}
@@ -35,6 +36,7 @@
                     {{ __('Book Appointment') }}
                 </flux:sidebar.item>
             </div>
+            @endhasrole
 
             {{-- Appointments --}}
             <div class="mb-4">
@@ -66,22 +68,28 @@
                 </div>
 
                 <flux:navlist variant="outline">
+                    @can('view_services')
                     <flux:navlist.item icon="squares-plus" href="{{ route('admin.services') }}"
                         :current="request()->routeIs('admin.services')" wire:navigate>
                         Services</flux:navlist.item>
+                    @endcan
+                    @can('view_staff')
                     <flux:navlist.item icon="users" href="{{ route('admin.staff') }}"
                         :current="request()->routeIs('admin.staff')" wire:navigate>
                         Staff</flux:navlist.item>
+                    @endcan
+                    @can('view_users')
                     <flux:navlist.item icon="user-group" href="{{ route('admin.customers') }}"
                         :current="request()->routeIs('admin.customers')" wire:navigate>
                         Customers</flux:navlist.item>
+                    @endcan
                 </flux:navlist>
                 @endhasrole
             </div>
 
             {{-- Administration --}}
             <div class="mb-4">
-                @hasrole('Super Admin|Staff')
+                @hasrole('Super Admin')
                 <div class="mb-2 px-4 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
                     Administration
                 </div>
@@ -99,18 +107,6 @@
         </flux:sidebar.nav>
 
         <flux:spacer />
-
-        {{-- Footer Links --}}
-        <div class="px-2 pb-2">
-            <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit"
-                target="_blank">
-                {{ __('Repository') }}
-            </flux:sidebar.item>
-            <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire"
-                target="_blank">
-                {{ __('Documentation') }}
-            </flux:sidebar.item>
-        </div>
 
         {{-- User Menu --}}
         <div class="border-t border-zinc-100 dark:border-zinc-800 p-2">

@@ -37,6 +37,8 @@ class AppointmentSeeder extends Seeder
             ['name' => 'John Smith', 'email' => 'john@example.com', 'phone' => '+1 555-0201'],
             ['name' => 'Jane Doe', 'email' => 'jane@example.com', 'phone' => '+1 555-0202'],
             ['name' => 'Bob Wilson', 'email' => 'bob@example.com', 'phone' => '+1 555-0203'],
+            ['name' => 'Alice Brown', 'email' => 'alice@example.com', 'phone' => '+1 555-0204'],
+            ['name' => 'Charlie Day', 'email' => 'charlie@example.com', 'phone' => '+1 555-0205'],
         ];
 
         foreach ($customerData as $data) {
@@ -56,14 +58,14 @@ class AppointmentSeeder extends Seeder
 
         // 4. Create Appointments
         foreach ($customers as $customer) {
-            // Create 5-8 appointments for each customer
-            $numAppointments = rand(5, 8);
+            // Create 3-5 appointments for each customer
+            $numAppointments = rand(3, 5);
 
             for ($i = 0; $i < $numAppointments; $i++) {
                 $service = $services->random();
 
-                // Mix of past and future appointments
-                $daysOffset = rand(-30, 20);
+                // Focus on current month and near future/past ( +/- 45 days)
+                $daysOffset = rand(-15, 45);
 
                 // Determine status based on date
                 if ($daysOffset < 0) {

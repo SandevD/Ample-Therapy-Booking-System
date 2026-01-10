@@ -72,7 +72,11 @@
                             @foreach($events->take(2) as $event)
                                 <div
                                     class="hidden sm:block text-xs truncate px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                                    {{ $event->service->name }}
+                                    @role('Staff')
+                                        {{ $event->customer_name }}
+                                    @else
+                                        {{ $event->service->name }}
+                                    @endrole
                                 </div>
                             @endforeach
                             @if($events->count() > 2)
@@ -96,7 +100,7 @@
     </flux:card>
 
     {{-- Day Details Modal --}}
-    <flux:modal wire:model="showingEvents" class="max-w-md">
+    <flux:modal wire:model="showingEvents" class="w-full max-w-xl">
         <div class="space-y-4">
             <div>
                 <flux:heading size="lg">Appointments</flux:heading>
@@ -104,32 +108,76 @@
             </div>
 
             @if($dayEvents && count($dayEvents) > 0)
-                <div class="space-y-3">
+                <div class="space-y-4">
                     @foreach($dayEvents as $event)
-                        <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
-                            <div class="flex items-center gap-3 mb-2">
-                                <div class="h-3 w-3 rounded-full" style="background-color: {{ $event->service->color }}"></div>
-                                <div class="font-semibold text-zinc-900 dark:text-white">{{ $event->service->name }}</div>
-                                <span
-                                    class="ml-auto text-xs px-2 py-1 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300">
-                                    {{ ucfirst($event->status) }}
-                                </span>
-                            </div>
+                        <div class="group relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:shadow-md transition-all duration-300">
+                            <!-- Service Color Strip -->
+                            <div class="absolute left-0 top-0 bottom-0 w-1.5" style="background-color: {{ $event->service->color }}"></div>
 
-                            <div class="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-                                <div class="flex items-center gap-2">
-                                    <flux:icon name="clock" class="w-4 h-4" />
-                                    {{ $event->starts_at->format('g:i A') }} - {{ $event->ends_at->format('g:i A') }}
+                            <div class="p-5 pl-7">
+                                <!-- Header: Service Name & Status -->
+                                <div class="flex items-start justify-between gap-3 mb-3">
+                                    <h3 class="font-bold text-lg text-zinc-900 dark:text-white leading-tight">
+                                        {{ $event->service->name }}
+                                    </h3>
+                                    @php
+                                        $statusColors = [
+                                            'booked' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                                            'confirmed' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                            'completed' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                                            'cancelled' => 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+                                        ];
+                                        $statusColor = $statusColors[$event->status] ?? 'bg-zinc-100 text-zinc-700';
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold {{ $statusColor }}">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-current opacity-75"></span>
+                                        {{ ucfirst($event->status) }}
+                                    </span>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <flux:icon name="user" class="w-4 h-4" />
-                                    {{ $event->user->name }}
-                                </div>
-                                @if($event->notes)
-                                    <div class="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700 text-xs italic">
-                                        "{{ $event->notes }}"
+
+                                <!-- Details -->
+                                <div class="space-y-2.5">
+                                    <!-- Time -->
+                                    <div class="flex items-center gap-2.5 text-sm text-zinc-600 dark:text-zinc-400">
+                                        <div class="p-1.5 rounded-full bg-zinc-50 dark:bg-zinc-700/50 text-zinc-400 dark:text-zinc-500">
+                                            <flux:icon name="clock" class="w-3.5 h-3.5" />
+                                        </div>
+                                        <span class="font-medium">
+                                            {{ $event->starts_at->format('g:i A') }} - {{ $event->ends_at->format('g:i A') }}
+                                        </span>
                                     </div>
-                                @endif
+
+                                    <!-- Person (Customer or Staff) -->
+                                    <div class="flex items-center gap-2.5 text-sm text-zinc-600 dark:text-zinc-400">
+                                        <div class="p-1.5 rounded-full bg-zinc-50 dark:bg-zinc-700/50 text-zinc-400 dark:text-zinc-500">
+                                            <flux:icon name="user" class="w-3.5 h-3.5" />
+                                        </div>
+                                        <div class="font-medium">
+                                            @role('Staff')
+                                                <div class="flex flex-col">
+                                                    <span class="text-zinc-900 dark:text-zinc-200">{{ $event->customer_name }}</span>
+                                                    @if($event->customer_phone)
+                                                        <span class="text-xs text-zinc-400">{{ $event->customer_phone }}</span>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <span class="text-zinc-900 dark:text-zinc-200">with {{ $event->user->name }}</span>
+                                            @endrole
+                                        </div>
+                                    </div>
+
+                                    <!-- Notes -->
+                                    @if($event->notes)
+                                        <div class="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-700/50">
+                                            <div class="flex gap-2">
+                                                <flux:icon name="document-text" class="w-4 h-4 text-zinc-400 mt-0.5 shrink-0" />
+                                                <div class="text-sm text-zinc-500 italic">
+                                                    "{{ $event->notes }}"
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     @endforeach

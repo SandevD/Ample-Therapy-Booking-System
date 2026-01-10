@@ -41,8 +41,15 @@ class Calendar extends Component
         $this->selectedDate = Carbon::parse($date);
 
         // Fetch appointments for this specific date
-        $this->dayEvents = Appointment::where('customer_email', auth()->user()->email)
-            ->whereDate('starts_at', $this->selectedDate)
+        $query = Appointment::query();
+
+        if (auth()->user()->hasRole('Customer')) {
+            $query->where('customer_email', auth()->user()->email);
+        } elseif (auth()->user()->hasRole('Staff') && !auth()->user()->hasRole('Super Admin')) {
+            $query->where('user_id', auth()->id());
+        }
+
+        $this->dayEvents = $query->whereDate('starts_at', $this->selectedDate)
             ->with(['service', 'user'])
             ->orderBy('starts_at')
             ->get();
@@ -60,8 +67,15 @@ class Calendar extends Component
         // Let's stick to standard Sunday start for grid simplicity 
 
         // Fetch appointments for the entire month for indicators
-        $monthlyAppointments = Appointment::where('customer_email', auth()->user()->email)
-            ->whereYear('starts_at', $this->currentYear)
+        $monthlyQuery = Appointment::query();
+
+        if (auth()->user()->hasRole('Customer')) {
+            $monthlyQuery->where('customer_email', auth()->user()->email);
+        } elseif (auth()->user()->hasRole('Staff') && !auth()->user()->hasRole('Super Admin')) {
+            $monthlyQuery->where('user_id', auth()->id());
+        }
+
+        $monthlyAppointments = $monthlyQuery->whereYear('starts_at', $this->currentYear)
             ->whereMonth('starts_at', $this->currentMonth)
             ->get()
             ->groupBy(function ($date) {

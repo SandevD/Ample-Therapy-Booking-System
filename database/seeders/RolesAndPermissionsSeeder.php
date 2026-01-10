@@ -72,8 +72,7 @@ class RolesAndPermissionsSeeder extends Seeder
         );
         $staff->syncPermissions([
             'view_dashboard',
-            'view_services',
-            'view_staff',
+            'view_users', // Allows seeing the Customers page (which will be filtered)
             'view_appointments',
             'create_appointments',
             'edit_appointments',
