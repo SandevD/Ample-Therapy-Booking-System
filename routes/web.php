@@ -22,10 +22,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('services', ServicesIndex::class)->name('admin.services');
     Route::get('staff', StaffIndex::class)->name('admin.staff');
     Route::get('customers', CustomersIndex::class)->name('admin.customers');
+    Route::get('customers/{user}', \App\Livewire\Admin\Customers\Show::class)->name('admin.customers.show');
 
     // Administration
     Route::get('admins', AdminsIndex::class)->name('admin.admins');
     Route::get('roles', RolesIndex::class)->name('admin.roles');
+
+    // Customer Booking
+    Route::get('booking', \App\Livewire\Booking\Wizard::class)->name('booking.wizard');
+    Route::get('my-calendar', \App\Livewire\Customer\Calendar::class)->name('customer.calendar');
 });
 
 require __DIR__ . '/settings.php';

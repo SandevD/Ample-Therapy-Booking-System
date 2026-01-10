@@ -54,7 +54,11 @@
                                 <div class="text-xs text-zinc-500">buffer</div>
                             </div>
                             <div class="rounded-lg bg-zinc-50 p-2 dark:bg-zinc-700/50">
-                                <div class="text-lg font-bold text-zinc-900 dark:text-zinc-100">${{ number_format($service->price, 0) }}</div>
+                                @if((float)$service->price === 0.0)
+                                    <div class="text-lg font-bold text-emerald-600 dark:text-emerald-400">FREE</div>
+                                @else
+                                    <div class="text-lg font-bold text-zinc-900 dark:text-zinc-100">${{ number_format($service->price, 0) }}</div>
+                                @endif
                                 <div class="text-xs text-zinc-500">price</div>
                             </div>
                         </div>
@@ -85,7 +89,7 @@
             <div class="mt-4 font-medium text-zinc-600 dark:text-zinc-400">No services found</div>
             <div class="mt-1 text-sm text-zinc-500">Get started by adding your first service</div>
             <button wire:click="openCreateModal"
-                class="mt-6 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-transform hover:shadow-xl hover:scale-105">
+                class="mt-6 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2 text-sm font-medium text-white shadow-lg transition-transform hover:shadow-xl hover:scale-105">
                 <flux:icon name="plus" class="h-4 w-4" />
                 Add Service
             </button>
@@ -154,7 +158,7 @@
                 <div class="flex justify-end gap-3 pt-4">
                     <flux:button variant="ghost" wire:click="closeModal">Cancel</flux:button>
                     <button type="submit"
-                        class="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-transform duration-300 ease-out hover:shadow-xl hover:scale-105">
+                        class="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2 text-sm font-medium text-white shadow-lg transition-transform duration-300 ease-out hover:shadow-xl hover:scale-105">
                         {{ $editingService ? 'Update' : 'Create' }}
                     </button>
                 </div>

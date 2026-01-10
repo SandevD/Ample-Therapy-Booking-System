@@ -106,32 +106,19 @@ class RolesAndPermissionsSeeder extends Seeder
         );
         $admin->assignRole('Super Admin');
 
-        // Staff Member
-        $staffUser = User::firstOrCreate(
-            ['email' => 'staff@example.com'],
+        // Owner (Staff Role)
+        $owner = User::firstOrCreate(
+            ['email' => 'hello@ampletherapy.org.uk'],
             [
-                'name' => 'Demo Staff',
-                'email' => 'staff@example.com',
-                'password' => Hash::make('password'),
-                'phone' => '+1 555-0100',
-                'bio' => 'Experienced service provider',
+                'name' => 'Inayata Kanji',
+                'email' => 'hello@ampletherapy.org.uk',
+                'password' => Hash::make('Inayat321@'),
+                'phone' => '+44 7000 000000', // Placeholder
+                'bio' => 'Owner & Therapist at AMPLE Therapy',
                 'is_active' => true,
             ]
         );
-        $staffUser->assignRole('Staff');
-
-        // Customer
-        $customerUser = User::firstOrCreate(
-            ['email' => 'customer@example.com'],
-            [
-                'name' => 'Demo Customer',
-                'email' => 'customer@example.com',
-                'password' => Hash::make('password'),
-                'phone' => '+1 555-0200',
-                'is_active' => true,
-            ]
-        );
-        $customerUser->assignRole('Customer');
+        $owner->assignRole('Staff');
     }
 }
 

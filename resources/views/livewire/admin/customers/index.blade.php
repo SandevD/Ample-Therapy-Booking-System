@@ -33,6 +33,7 @@
                         <flux:dropdown position="bottom" align="end">
                             <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" />
                             <flux:menu>
+                                <flux:menu.item icon="user" href="{{ route('admin.customers.show', $customer) }}" wire:navigate>View Profile</flux:menu.item>
                                 <flux:menu.item icon="pencil" wire:click="openEditModal({{ $customer->id }})">Edit</flux:menu.item>
                                 <flux:menu.separator />
                                 <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $customer->id }})">Delete</flux:menu.item>

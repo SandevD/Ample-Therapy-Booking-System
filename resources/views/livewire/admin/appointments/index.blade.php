@@ -5,11 +5,13 @@
             <flux:heading size="xl">Appointments</flux:heading>
             <flux:text class="mt-1 text-zinc-500">View and manage all bookings.</flux:text>
         </div>
+        @hasrole('Super Admin|Staff')
         <button wire:click="openCreateModal"
-            class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-transform hover:shadow-xl hover:scale-105">
+            class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-transform hover:shadow-xl hover:scale-105">
             <flux:icon name="plus" class="h-4 w-4" />
             New Appointment
         </button>
+        @endhasrole
     </div>
 
     {{-- Filters --}}
@@ -30,6 +32,7 @@
                 </flux:select>
             </div>
 
+            @hasrole('Super Admin|Staff')
             <div class="w-full sm:w-48">
                 <flux:select wire:model.live="staffFilter" placeholder="All Staff">
                     <option value="">All Staff</option>
@@ -38,6 +41,7 @@
                     @endforeach
                 </flux:select>
             </div>
+            @endhasrole
 
             <div class="w-full sm:w-auto">
                 <flux:input type="date" wire:model.live="dateFilter" />
@@ -84,14 +88,15 @@
                             </div>
                         </flux:table.cell>
                         <flux:table.cell>
+                            @hasrole('Super Admin|Staff')
                             <flux:dropdown position="bottom" align="start">
                                 <button type="button" class="inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-medium cursor-pointer
-                                                    @if($appointment->status === 'booked') bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400
-                                                    @elseif($appointment->status === 'confirmed') bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
-                                                    @elseif($appointment->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400
-                                                    @elseif($appointment->status === 'cancelled') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
-                                                    @else bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300
-                                                    @endif">
+                                                        @if($appointment->status === 'booked') bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400
+                                                        @elseif($appointment->status === 'confirmed') bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
+                                                        @elseif($appointment->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400
+                                                        @elseif($appointment->status === 'cancelled') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
+                                                        @else bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300
+                                                        @endif">
                                     {{ ucfirst($appointment->status) }}
                                 </button>
                                 <flux:menu>
@@ -113,8 +118,20 @@
                                     </flux:menu.item>
                                 </flux:menu>
                             </flux:dropdown>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-medium
+                                    @if($appointment->status === 'booked') bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400
+                                    @elseif($appointment->status === 'confirmed') bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
+                                    @elseif($appointment->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400
+                                    @elseif($appointment->status === 'cancelled') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
+                                    @else bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300
+                                    @endif">
+                                    {{ ucfirst($appointment->status) }}
+                                </span>
+                            @endhasrole
                         </flux:table.cell>
                         <flux:table.cell>
+                            @hasrole('Super Admin|Staff')
                             <flux:dropdown position="bottom" align="end">
                                 <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" />
                                 <flux:menu>
@@ -128,6 +145,7 @@
                                     </flux:menu.item>
                                 </flux:menu>
                             </flux:dropdown>
+                            @endhasrole
                         </flux:table.cell>
                     </flux:table.row>
                 @empty
@@ -242,7 +260,7 @@
                 <div class="flex justify-end gap-3 pt-4">
                     <flux:button variant="ghost" wire:click="closeModal">Cancel</flux:button>
                     <button type="submit"
-                        class="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-transform duration-300 ease-out hover:shadow-xl hover:scale-105">
+                        class="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2 text-sm font-medium text-white shadow-lg transition-transform duration-300 ease-out hover:shadow-xl hover:scale-105">
                         {{ $editingAppointment ? 'Update' : 'Create Appointment' }}
                     </button>
                 </div>
@@ -262,6 +280,60 @@
             <div class="flex justify-end gap-3">
                 <flux:button variant="ghost" wire:click="$set('showDeleteModal', false)">Cancel</flux:button>
                 <flux:button variant="danger" wire:click="delete">Delete</flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Status Confirmation Modal --}}
+    <flux:modal wire:model="showConfirmStatusModal" class="max-w-md">
+        <div class="space-y-6">
+            <flux:heading size="lg">Confirm Appointment</flux:heading>
+
+            <div class="p-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
+                <div class="flex gap-3">
+                    <flux:icon name="exclamation-triangle" class="w-5 h-5 shrink-0" />
+                    <div class="text-sm">
+                        <p class="font-medium">Conflict Detected</p>
+                        <p class="mt-1">
+                            There are <strong>{{ $conflictingCount }}</strong> other pending appointments for this time slot.
+                            Confirming this appointment will automatically <strong>cancel</strong> them.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <flux:text>Are you sure you want to proceed?</flux:text>
+
+            <div class="flex justify-end gap-3">
+                <flux:button variant="ghost" wire:click="$set('showConfirmStatusModal', false)">Cancel</flux:button>
+                <flux:button variant="primary" wire:click="confirmStatusUpdate">Confirm & Cancel Others</flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Block Action Modal --}}
+    <flux:modal wire:model="showBlockModal" class="max-w-md">
+        <div class="space-y-6">
+            <flux:heading size="lg">Action Blocked</flux:heading>
+
+            <div class="p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300">
+                <div class="flex gap-3">
+                    <flux:icon name="x-circle" class="w-5 h-5 shrink-0" />
+                    <div class="text-sm">
+                        <p class="font-medium">Slot Unavailable</p>
+                        <p class="mt-1">
+                            This time slot is already taken by 
+                            <strong>{{ $blockingAppointment?->customer_name }}</strong> 
+                            ({{ ucfirst($blockingAppointment?->status) }}).
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <flux:text>You must change the status of the existing appointment before you can modify this one.</flux:text>
+
+            <div class="flex justify-end">
+                <flux:button variant="ghost" wire:click="$set('showBlockModal', false)">Close</flux:button>
             </div>
         </div>
     </flux:modal>

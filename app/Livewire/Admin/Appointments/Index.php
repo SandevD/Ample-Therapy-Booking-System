@@ -127,9 +127,21 @@ class Index extends Component
         ];
 
         if ($this->editingAppointment) {
+            // Security check
+            if (auth()->user()->hasRole('Customer') && $this->editingAppointment->customer_email !== auth()->user()->email) {
+                Flux::toast('Unauthorized action.', variant: 'danger');
+                return;
+            }
+
             $this->editingAppointment->update($data);
             Flux::toast('Appointment updated.', variant: 'success');
         } else {
+            // Customers should generally use the wizard, but if they use this form:
+            if (auth()->user()->hasRole('Customer')) {
+                // Enforce their own identity
+                $data['customer_email'] = auth()->user()->email;
+            }
+
             Appointment::create($data);
             Flux::toast('Appointment created.', variant: 'success');
         }
@@ -137,10 +149,97 @@ class Index extends Component
         $this->closeModal();
     }
 
+    public bool $showConfirmStatusModal = false;
+    public ?Appointment $confirmingAppointment = null;
+    public string $pendingStatusUpdate = '';
+    public int $conflictingCount = 0;
+
+    public bool $showBlockModal = false;
+    public ?Appointment $blockingAppointment = null;
+
     public function updateStatus(Appointment $appointment, string $status): void
     {
+        // Security check: Ensure customers can only update their own appointments
+        if (auth()->user()->hasRole('Customer') && $appointment->customer_email !== auth()->user()->email) {
+            Flux::toast('Unauthorized action.', variant: 'danger');
+            return;
+        }
+
+        // Check if there's already a 'confirmed' or 'completed' appointment in this slot (excluding current)
+        $blocking = Appointment::where('user_id', $appointment->user_id)
+            ->where('id', '!=', $appointment->id)
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->where(function ($q) use ($appointment) {
+                $q->whereBetween('starts_at', [$appointment->starts_at, $appointment->ends_at])
+                    ->orWhereBetween('ends_at', [$appointment->starts_at, $appointment->ends_at])
+                    ->orWhere(function ($q2) use ($appointment) {
+                        $q2->where('starts_at', '<=', $appointment->starts_at)
+                            ->where('ends_at', '>=', $appointment->ends_at);
+                    });
+            })->first();
+
+        if ($blocking) {
+            $this->blockingAppointment = $blocking;
+            $this->showBlockModal = true;
+            return;
+        }
+
+        if ($status === 'confirmed') {
+            // Check for conflicting 'booked' (pending) appointments
+            // Same staff, excluding current appointment, status is booked/pending
+            $conflicts = Appointment::where('user_id', $appointment->user_id)
+                ->where('id', '!=', $appointment->id)
+                ->where('status', 'booked')
+                ->where(function ($q) use ($appointment) {
+                    $q->whereBetween('starts_at', [$appointment->starts_at, $appointment->ends_at])
+                        ->orWhereBetween('ends_at', [$appointment->starts_at, $appointment->ends_at])
+                        ->orWhere(function ($q2) use ($appointment) {
+                            $q2->where('starts_at', '<=', $appointment->starts_at)
+                                ->where('ends_at', '>=', $appointment->ends_at);
+                        });
+                })->count();
+
+            if ($conflicts > 0) {
+                $this->confirmingAppointment = $appointment;
+                $this->pendingStatusUpdate = $status;
+                $this->conflictingCount = $conflicts;
+                $this->showConfirmStatusModal = true;
+                return;
+            }
+        }
+
         $appointment->update(['status' => $status]);
         Flux::toast('Appointment status updated.', variant: 'success');
+    }
+
+    public function confirmStatusUpdate(): void
+    {
+        if (!$this->confirmingAppointment)
+            return;
+
+        $appointment = $this->confirmingAppointment;
+
+        // Cancel conflicts
+        Appointment::where('user_id', $appointment->user_id)
+            ->where('id', '!=', $appointment->id)
+            ->where('status', 'booked')
+            ->where(function ($q) use ($appointment) {
+                $q->whereBetween('starts_at', [$appointment->starts_at, $appointment->ends_at])
+                    ->orWhereBetween('ends_at', [$appointment->starts_at, $appointment->ends_at])
+                    ->orWhere(function ($q2) use ($appointment) {
+                        $q2->where('starts_at', '<=', $appointment->starts_at)
+                            ->where('ends_at', '>=', $appointment->ends_at);
+                    });
+            })->update(['status' => 'cancelled']);
+
+        $appointment->update(['status' => $this->pendingStatusUpdate]);
+
+        Flux::toast('Appointment confirmed and ' . $this->conflictingCount . ' conflicts cancelled.', variant: 'success');
+
+        $this->showConfirmStatusModal = false;
+        $this->confirmingAppointment = null;
+        $this->pendingStatusUpdate = '';
+        $this->conflictingCount = 0;
     }
 
     public function confirmDelete(Appointment $appointment): void
@@ -197,6 +296,7 @@ class Index extends Component
     {
         $appointments = Appointment::query()
             ->with(['service', 'user'])
+            ->when(auth()->user()->hasRole('Customer'), fn($q) => $q->where('customer_email', auth()->user()->email))
             ->when($this->search, fn($q) => $q->where(function ($q2) {
                 $q2->where('customer_name', 'like', "%{$this->search}%")
                     ->orWhere('customer_email', 'like', "%{$this->search}%");
