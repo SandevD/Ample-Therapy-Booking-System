@@ -8,7 +8,7 @@ php artisan optimize
 php artisan view:cache
 
 if [ ! -L public/storage ]; then
-    echo "🔗 Linking storage..."
+    echo "🔗 Linking storage..." 
     php artisan storage:link
 fi
 
