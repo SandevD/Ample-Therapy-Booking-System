@@ -156,7 +156,7 @@ class Wizard extends Component
     {
         return view('livewire.booking.wizard', [
             'services' => $this->step === 1 ? Service::where('is_active', true)->get() : [],
-            'staffMembers' => $this->step === 2 ? User::role('staff')->where('is_active', true)->whereHas('services', function ($q) {
+            'staffMembers' => $this->step === 2 ? User::role('Staff')->where('is_active', true)->whereHas('services', function ($q) {
                 $q->where('services.id', $this->selectedServiceId);
             })->get() : [],
             'selectedService' => $this->selectedServiceId ? Service::find($this->selectedServiceId) : null,

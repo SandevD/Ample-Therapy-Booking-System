@@ -92,7 +92,7 @@ class AppointmentSeeder extends Seeder
                     'starts_at' => $startsAt,
                     'ends_at' => $endsAt,
                     'status' => $status,
-                    'notes' => rand(0, 1) ? fake()->sentence() : null,
+                    'notes' => rand(0, 1) ? 'Sample appointment note.' : null,
                 ]);
             }
         }
