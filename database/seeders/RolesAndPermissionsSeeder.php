@@ -95,11 +95,11 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         // Super Admin
         $admin = User::firstOrCreate(
-            ['email' => 'sandev.net@gmail.com'],
+            ['email' => 'admin@ampletherapy.uk'],
             [
                 'name' => 'Sandev Admin',
-                'email' => 'sandev.net@gmail.com',
-                'password' => Hash::make('Kalupusa321@'),
+                'email' => 'admin@ampletherapy.uk',
+                'password' => Hash::make('Admin@123'),
                 'is_active' => true,
             ]
         );
