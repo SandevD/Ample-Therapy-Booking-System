@@ -25,6 +25,7 @@ class Index extends Component
     public int $buffer_time = 15;
     public bool $is_active = true;
     public string $color = '#3B82F6';
+    public int $session_count = 1;
 
     protected function rules(): array
     {
@@ -34,6 +35,7 @@ class Index extends Component
             'duration' => 'required|integer|min:5|max:480',
             'price' => 'required|numeric|min:0',
             'buffer_time' => 'required|integer|min:0|max:120',
+            'session_count' => 'required|integer|min:1|max:52',
             'is_active' => 'boolean',
             'color' => 'required|string|max:7',
         ];
@@ -61,6 +63,7 @@ class Index extends Component
         $this->buffer_time = $service->buffer_time;
         $this->is_active = $service->is_active;
         $this->color = $service->color;
+        $this->session_count = $service->session_count;
         $this->showModal = true;
     }
 
@@ -74,6 +77,7 @@ class Index extends Component
             'duration' => $this->duration,
             'price' => $this->price,
             'buffer_time' => $this->buffer_time,
+            'session_count' => $this->session_count,
             'is_active' => $this->is_active,
             'color' => $this->color,
         ];
@@ -119,6 +123,7 @@ class Index extends Component
         $this->duration = 60;
         $this->price = 0;
         $this->buffer_time = 15;
+        $this->session_count = 1;
         $this->is_active = true;
         $this->color = '#3B82F6';
         $this->resetValidation();

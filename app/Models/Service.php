@@ -17,6 +17,7 @@ class Service extends Model
         'duration',
         'price',
         'buffer_time',
+        'session_count',
         'is_active',
         'color',
     ];
@@ -27,6 +28,7 @@ class Service extends Model
             'duration' => 'integer',
             'price' => 'decimal:2',
             'buffer_time' => 'integer',
+            'session_count' => 'integer',
             'is_active' => 'boolean',
         ];
     }

@@ -44,6 +44,15 @@
                             </flux:dropdown>
                         </div>
 
+                        @if($service->session_count > 1)
+                            <div class="mt-2">
+                                <span class="inline-flex items-center gap-1 rounded-full bg-fuchsia-100 px-2.5 py-1 text-xs font-medium text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400">
+                                    <flux:icon name="rectangle-stack" class="w-3 h-3" />
+                                    {{ $service->session_count }} sessions
+                                </span>
+                            </div>
+                        @endif
+
                         <div class="mt-4 grid grid-cols-3 gap-3 text-center">
                             <div class="rounded-lg bg-zinc-50 p-2 dark:bg-zinc-700/50">
                                 <div class="text-lg font-bold text-zinc-900 dark:text-zinc-100">{{ $service->duration }}</div>
@@ -132,6 +141,13 @@
                         <flux:error name="buffer_time" />
                     </flux:field>
                 </div>
+
+                <flux:field>
+                    <flux:label>Sessions per Booking</flux:label>
+                    <flux:input type="number" wire:model="session_count" min="1" max="52" />
+                    <flux:description>How many separate time slots the customer must book at once.</flux:description>
+                    <flux:error name="session_count" />
+                </flux:field>
 
                 <div class="grid grid-cols-2 gap-4">
                     <flux:field>
