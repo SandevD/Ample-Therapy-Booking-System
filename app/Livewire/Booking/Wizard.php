@@ -6,6 +6,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Models\Appointment;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 
@@ -13,7 +14,7 @@ use Livewire\Attributes\Layout;
 class Wizard extends Component
 {
     // State
-    public $step = 1;
+    public int $step = 1;
 
     // Selections
     public $selectedServiceId = null;
@@ -21,110 +22,182 @@ class Wizard extends Component
     public $selectedDate = null;
     public $selectedTime = null;
 
-    // Customer Details (if not logged in, but we assume auth for now based on routes)
-    public $notes = '';
+    // Multi-session slot accumulator: [['date' => 'Y-m-d', 'time' => 'H:i'], ...]
+    public array $selectedSlots = [];
 
-    public function mount()
+    public string $notes = '';
+
+    public function mount(): void
     {
-        // Initialize if needed
         $this->selectedDate = now()->format('Y-m-d');
     }
 
-    public function selectService($serviceId)
+    public function selectService($serviceId): void
     {
         $this->selectedServiceId = $serviceId;
         $this->nextStep();
     }
 
-    public function selectStaff($staffId)
+    public function selectStaff($staffId): void
     {
         $this->selectedStaffId = $staffId;
         $this->nextStep();
     }
 
-    public function selectDateTime($date, $time)
+    public function selectDateTime(string $date, string $time): void
     {
+        $service = Service::find($this->selectedServiceId);
+
+        if ($service->session_count <= 1) {
+            // Single-session: original behaviour
+            $this->selectedDate = $date;
+            $this->selectedTime = $time;
+            $this->nextStep();
+            return;
+        }
+
+        // Multi-session: prevent duplicate slot selection
+        $alreadySelected = collect($this->selectedSlots)->contains(
+            fn($slot) => $slot['date'] === $date && $slot['time'] === $time
+        );
+
+        if ($alreadySelected) {
+            return;
+        }
+
+        $this->selectedSlots[] = ['date' => $date, 'time' => $time];
         $this->selectedDate = $date;
         $this->selectedTime = $time;
-        // Logic to validate availability would go here
-        $this->nextStep();
+
+        if (count($this->selectedSlots) >= $service->session_count) {
+            $this->nextStep();
+        }
     }
 
-    public function nextStep()
+    public function removeSlot(int $index): void
+    {
+        unset($this->selectedSlots[$index]);
+        $this->selectedSlots = array_values($this->selectedSlots);
+        // Reset the time highlight so nothing looks selected after removal
+        $this->selectedTime = null;
+    }
+
+    public function nextStep(): void
     {
         $this->step++;
     }
 
-    public function previousStep()
+    public function previousStep(): void
     {
+        if ($this->step === 4 && $this->selectedServiceId) {
+            $service = Service::find($this->selectedServiceId);
+            if ($service && $service->session_count > 1 && count($this->selectedSlots) > 0) {
+                array_pop($this->selectedSlots);
+                $this->selectedSlots = array_values($this->selectedSlots);
+                $this->selectedTime = null;
+            }
+        }
         $this->step--;
     }
 
     public function submit()
     {
-        // Validation
-        $this->validate([
-            'selectedServiceId' => 'required',
-            'selectedStaffId' => 'required',
-            'selectedDate' => 'required',
-            'selectedTime' => 'required',
-        ]);
-
         $service = Service::find($this->selectedServiceId);
-        $startsAt = Carbon::parse($this->selectedDate . ' ' . $this->selectedTime);
-        $endsAt = $startsAt->copy()->addMinutes($service->duration);
 
-        // Create Appointment
-        Appointment::create([
-            'service_id' => $this->selectedServiceId,
-            'user_id' => $this->selectedStaffId,
-            'customer_name' => auth()->user()->name,
-            'customer_email' => auth()->user()->email,
-            'customer_phone' => auth()->user()->phone ?? '',
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'status' => 'booked',
-            'notes' => $this->notes,
-        ]);
+        if ($service->session_count <= 1) {
+            $this->validate([
+                'selectedServiceId' => 'required',
+                'selectedStaffId'   => 'required',
+                'selectedDate'      => 'required',
+                'selectedTime'      => 'required',
+            ]);
 
-        // Reset or Redirect
-        return redirect()->route('dashboard');
+            $startsAt = Carbon::parse($this->selectedDate . ' ' . $this->selectedTime);
+            $endsAt   = $startsAt->copy()->addMinutes($service->duration);
+
+            Appointment::create([
+                'service_id'       => $this->selectedServiceId,
+                'user_id'          => $this->selectedStaffId,
+                'customer_name'    => auth()->user()->name,
+                'customer_email'   => auth()->user()->email,
+                'customer_phone'   => auth()->user()->phone ?? '',
+                'starts_at'        => $startsAt,
+                'ends_at'          => $endsAt,
+                'status'           => 'booked',
+                'notes'            => $this->notes,
+                'booking_group_id' => null,
+            ]);
+        } else {
+            $this->validate([
+                'selectedServiceId' => 'required',
+                'selectedStaffId'   => 'required',
+                'selectedSlots'     => 'required|array|min:' . $service->session_count,
+            ]);
+
+            $groupId = Str::uuid()->toString();
+
+            foreach ($this->selectedSlots as $slot) {
+                $startsAt = Carbon::parse($slot['date'] . ' ' . $slot['time']);
+                $endsAt   = $startsAt->copy()->addMinutes($service->duration);
+
+                Appointment::create([
+                    'service_id'       => $this->selectedServiceId,
+                    'user_id'          => $this->selectedStaffId,
+                    'customer_name'    => auth()->user()->name,
+                    'customer_email'   => auth()->user()->email,
+                    'customer_phone'   => auth()->user()->phone ?? '',
+                    'starts_at'        => $startsAt,
+                    'ends_at'          => $endsAt,
+                    'status'           => 'booked',
+                    'notes'            => $this->notes,
+                    'booking_group_id' => $groupId,
+                ]);
+            }
+        }
+
+        return redirect()->route('admin.appointments');
     }
 
-    public function getTimeSlotsProperty()
+    public function getTimeSlotsProperty(): array
     {
         if (!$this->selectedServiceId || !$this->selectedStaffId || !$this->selectedDate) {
             return [];
         }
 
-        $service = Service::find($this->selectedServiceId);
-        $slots = [];
-
-        // Start of day
-        $current = Carbon::parse($this->selectedDate . ' 09:00:00');
-
-        // End of day (last appointment must finish by 17:00)
+        $service  = Service::find($this->selectedServiceId);
+        $slots    = [];
+        $current  = Carbon::parse($this->selectedDate . ' 09:00:00');
         $endOfDay = Carbon::parse($this->selectedDate . ' 17:00:00');
 
-        // Fetch existing appointments for the day to check conflicts efficiently
+        // Existing DB appointments for this staff member on this day
         $appointments = Appointment::where('user_id', $this->selectedStaffId)
             ->whereDate('starts_at', $this->selectedDate)
             ->where('status', '!=', 'cancelled')
             ->get();
 
+        // In-memory selected slots on this same date (not yet saved to DB)
+        $pendingIntervals = collect($this->selectedSlots)
+            ->filter(fn($s) => $s['date'] === $this->selectedDate)
+            ->map(function ($s) use ($service) {
+                $start = Carbon::parse($s['date'] . ' ' . $s['time']);
+                return [
+                    'starts_at' => $start,
+                    'ends_at'   => $start->copy()->addMinutes($service->duration),
+                ];
+            });
+
         while (true) {
             $slotStart = $current->copy();
-            $slotEnd = $current->copy()->addMinutes($service->duration);
+            $slotEnd   = $current->copy()->addMinutes($service->duration);
 
-            // If the appointment ends after closing time, stop generating slots
             if ($slotEnd->gt($endOfDay)) {
                 break;
             }
 
-            // Check for conflicts
-            $conflictingAppointments = $appointments->filter(function ($appointment) use ($slotStart, $slotEnd) {
-                return $slotStart->lt($appointment->ends_at) && $slotEnd->gt($appointment->starts_at);
-            });
+            // DB conflict check
+            $conflictingAppointments = $appointments->filter(
+                fn($appt) => $slotStart->lt($appt->ends_at) && $slotEnd->gt($appt->starts_at)
+            );
 
             $hasConfirmed = $conflictingAppointments->contains('status', 'confirmed');
             $pendingCount = $conflictingAppointments->where('status', 'booked')->count();
@@ -133,19 +206,28 @@ class Wizard extends Component
             if ($hasConfirmed) {
                 $status = 'confirmed';
             } elseif ($pendingCount > 0) {
-                $status = 'booked'; // This corresponds to 'Pending' in UI
+                $status = 'booked';
             }
 
+            // In-memory slot conflict check
+            $conflictsWithPending = $pendingIntervals->contains(
+                fn($interval) => $slotStart->lt($interval['ends_at']) && $slotEnd->gt($interval['starts_at'])
+            );
+
+            $isAlreadySelected = collect($this->selectedSlots)->contains(
+                fn($s) => $s['date'] === $this->selectedDate && $s['time'] === $slotStart->format('H:i')
+            );
+
             $slots[] = [
-                'time' => $slotStart->format('H:i'),
-                'start_formatted' => $slotStart->format('H:i'),
-                'end_formatted' => $slotEnd->format('H:i'),
-                'status' => $status,
-                'pending_count' => $pendingCount,
-                'is_bookable' => $status !== 'confirmed',
+                'time'                => $slotStart->format('H:i'),
+                'start_formatted'     => $slotStart->format('H:i'),
+                'end_formatted'       => $slotEnd->format('H:i'),
+                'status'              => $status,
+                'pending_count'       => $pendingCount,
+                'is_bookable'         => $status !== 'confirmed' && !$conflictsWithPending,
+                'is_already_selected' => $isAlreadySelected,
             ];
 
-            // Next slot starts after duration + buffer
             $current->addMinutes($service->duration + $service->buffer_time);
         }
 
@@ -154,13 +236,15 @@ class Wizard extends Component
 
     public function render()
     {
+        $selectedService = $this->selectedServiceId ? Service::find($this->selectedServiceId) : null;
+
         return view('livewire.booking.wizard', [
-            'services' => $this->step === 1 ? Service::where('is_active', true)->get() : [],
-            'staffMembers' => $this->step === 2 ? User::role('Staff')->where('is_active', true)->whereHas('services', function ($q) {
+            'services'        => $this->step === 1 ? Service::where('is_active', true)->get() : collect(),
+            'staffMembers'    => $this->step === 2 ? User::role('Staff')->where('is_active', true)->whereHas('services', function ($q) {
                 $q->where('services.id', $this->selectedServiceId);
-            })->get() : [],
-            'selectedService' => $this->selectedServiceId ? Service::find($this->selectedServiceId) : null,
-            'selectedStaff' => $this->selectedStaffId ? User::find($this->selectedStaffId) : null,
+            })->get() : collect(),
+            'selectedService' => $selectedService,
+            'selectedStaff'   => $this->selectedStaffId ? User::find($this->selectedStaffId) : null,
         ]);
     }
 }

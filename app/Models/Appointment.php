@@ -22,6 +22,7 @@ class Appointment extends Model
         'ends_at',
         'status',
         'notes',
+        'booking_group_id',
     ];
 
     protected function casts(): array
