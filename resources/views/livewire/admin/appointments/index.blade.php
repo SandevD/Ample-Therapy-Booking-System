@@ -14,6 +14,14 @@
         @endhasrole
     </div>
 
+    {{-- Callout --}}
+    <flux:callout icon="information-circle" color="purple">
+        <flux:callout.heading>Cancellations & Reschedules</flux:callout.heading>
+        <flux:callout.text>
+            Please contact ample therapy on Call <strong>+ (44) 792 004 6036</strong> or Email <strong>hello@ampletherapy.org.uk</strong> for all cancellations and reschedules.
+        </flux:callout.text>
+    </flux:callout>
+
     {{-- Filters --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div class="w-full sm:w-64">
@@ -61,93 +69,44 @@
                 <flux:table.column class="w-24"></flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
+                @php $renderedGroups = []; @endphp
                 @forelse ($appointments as $appointment)
-                    <flux:table.row>
-                        <flux:table.cell>
-                            <div class="font-medium">{{ $appointment->starts_at->format('M j, Y') }}</div>
-                            <div class="text-sm text-zinc-500">
-                                {{ $appointment->starts_at->format('g:i A') }} -
-                                {{ $appointment->ends_at->format('g:i A') }}
-                            </div>
-                        </flux:table.cell>
-                        <flux:table.cell>
-                            <div class="font-medium">{{ $appointment->customer_name }}</div>
-                            <div class="text-sm text-zinc-500">{{ $appointment->customer_email }}</div>
-                        </flux:table.cell>
-                        <flux:table.cell>
-                            <div class="flex items-center gap-2">
-                                <span class="h-2 w-2 rounded-full"
-                                    style="background-color: {{ $appointment->service->color }}"></span>
-                                {{ $appointment->service->name }}
-                            </div>
-                        </flux:table.cell>
-                        <flux:table.cell>
-                            <div class="flex items-center gap-2">
-                                <flux:avatar :initials="$appointment->user->initials()" size="xs" />
-                                {{ $appointment->user->name }}
-                            </div>
-                        </flux:table.cell>
-                        <flux:table.cell>
-                            @hasrole('Super Admin|Staff')
-                            <flux:dropdown position="bottom" align="start">
-                                <button type="button" class="inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-medium cursor-pointer
-                                                        @if($appointment->status === 'booked') bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400
-                                                        @elseif($appointment->status === 'confirmed') bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
-                                                        @elseif($appointment->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400
-                                                        @elseif($appointment->status === 'cancelled') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
-                                                        @else bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300
-                                                        @endif">
-                                    {{ ucfirst($appointment->status) }}
-                                </button>
-                                <flux:menu>
-                                    <flux:menu.item wire:click="updateStatus({{ $appointment->id }}, 'booked')">
-                                        <span
-                                            class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-amber-100 text-amber-800">Booked</span>
-                                    </flux:menu.item>
-                                    <flux:menu.item wire:click="updateStatus({{ $appointment->id }}, 'confirmed')">
-                                        <span
-                                            class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-blue-100 text-blue-800">Confirmed</span>
-                                    </flux:menu.item>
-                                    <flux:menu.item wire:click="updateStatus({{ $appointment->id }}, 'completed')">
-                                        <span
-                                            class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-green-100 text-green-800">Completed</span>
-                                    </flux:menu.item>
-                                    <flux:menu.item wire:click="updateStatus({{ $appointment->id }}, 'cancelled')">
-                                        <span
-                                            class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-red-100 text-red-800">Cancelled</span>
-                                    </flux:menu.item>
-                                </flux:menu>
-                            </flux:dropdown>
-                            @else
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-medium
-                                    @if($appointment->status === 'booked') bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400
-                                    @elseif($appointment->status === 'confirmed') bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
-                                    @elseif($appointment->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400
-                                    @elseif($appointment->status === 'cancelled') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
-                                    @else bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300
-                                    @endif">
-                                    {{ ucfirst($appointment->status) }}
-                                </span>
-                            @endhasrole
-                        </flux:table.cell>
-                        <flux:table.cell>
-                            @hasrole('Super Admin|Staff')
-                            <flux:dropdown position="bottom" align="end">
-                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" />
-                                <flux:menu>
-                                    <flux:menu.item icon="pencil" wire:click="openEditModal({{ $appointment->id }})">
-                                        Edit
-                                    </flux:menu.item>
-                                    <flux:menu.separator />
-                                    <flux:menu.item icon="trash" variant="danger"
-                                        wire:click="confirmDelete({{ $appointment->id }})">
-                                        Delete
-                                    </flux:menu.item>
-                                </flux:menu>
-                            </flux:dropdown>
-                            @endhasrole
-                        </flux:table.cell>
-                    </flux:table.row>
+                    @if ($appointment->booking_group_id)
+                        @if (in_array($appointment->booking_group_id, $renderedGroups))
+                            @continue
+                        @endif
+                        @php 
+                            $renderedGroups[] = $appointment->booking_group_id; 
+                            $groupAppointments = App\Models\Appointment::with(['service', 'user'])
+                                ->where('booking_group_id', $appointment->booking_group_id)
+                                ->orderBy('starts_at', 'asc')
+                                ->get();
+                        @endphp
+                        
+                        <flux:table.row wire:key="group-header-{{ $appointment->booking_group_id }}" class="bg-zinc-50 dark:bg-zinc-800/40 border-t-2 border-zinc-200 dark:border-zinc-700/60">
+                            <flux:table.cell colspan="6" class="py-4">
+                                <div class="flex items-center gap-4 px-4">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-700">
+                                        <flux:icon name="rectangle-stack" class="h-5 w-5 text-red-500" />
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                            Booking <span class="font-normal text-zinc-500 dark:text-zinc-400">#{{ strtoupper(substr($appointment->booking_group_id, 0, 8)) }}</span>
+                                        </div>
+                                        <div class="mt-0.5 text-xs text-zinc-500">
+                                            Booked on {{ $groupAppointments->first()->created_at->format('M j, Y') }} &bull; {{ $groupAppointments->count() }} Sessions
+                                        </div>
+                                    </div>
+                                </div>
+                            </flux:table.cell>
+                        </flux:table.row>
+
+                        @foreach($groupAppointments as $index => $groupAppt)
+                            @include('livewire.admin.appointments.appointment-row', ['appointment' => $groupAppt, 'sessionNumber' => $index + 1, 'wireKey' => 'appt-group-' . $groupAppt->id])
+                        @endforeach
+                    @else
+                        @include('livewire.admin.appointments.appointment-row', ['appointment' => $appointment, 'sessionNumber' => null, 'wireKey' => 'appt-single-' . $appointment->id])
+                    @endif
                 @empty
                     <flux:table.row>
                         <flux:table.cell colspan="6" class="text-center py-8">
@@ -161,8 +120,8 @@
 
     {{-- Pagination --}}
     @if($appointments->hasPages())
-        <div class="mt-4">
-            {{ $appointments->links() }}
+        <div class="mt-4" wire:key="appointments-pagination-{{ $appointments->currentPage() }}">
+            <flux:pagination :paginator="$appointments" />
         </div>
     @endif
 

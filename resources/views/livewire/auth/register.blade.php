@@ -5,7 +5,7 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6" x-data="{ submitting: false }" x-on:submit="if (submitting) { $event.preventDefault(); return } submitting = true">
             @csrf
 
             <!-- Name -->
@@ -54,8 +54,12 @@
             />
 
             <div class="flex items-center justify-end">
-                <flux:button type="submit" variant="primary" class="w-full">
-                    {{ __('Create account') }}
+                <flux:button type="submit" variant="primary" class="w-full" x-bind:disabled="submitting">
+                    <span x-show="!submitting">{{ __('Create account') }}</span>
+                    <span x-show="submitting" x-cloak>
+                        <flux:icon name="arrow-path" class="size-4 animate-spin mr-2 inline-block" />
+                        {{ __('Creating...') }}
+                    </span>
                 </flux:button>
             </div>
         </form>

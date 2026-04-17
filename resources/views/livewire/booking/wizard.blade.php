@@ -266,7 +266,7 @@
                             </div>
                             <div class="flex-1">
                                 <p class="text-sm font-medium text-zinc-500">
-                                    Sessions ({{ $selectedService->session_count }})
+                                    Booking Date: {{ now()->format('M j, Y') }} ({{ $selectedService->session_count }} Sessions)
                                 </p>
                                 <ul class="mt-1 space-y-1">
                                     @foreach($selectedSlots as $index => $slot)
