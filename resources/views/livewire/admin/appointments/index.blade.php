@@ -75,14 +75,11 @@
                         @if (in_array($appointment->booking_group_id, $renderedGroups))
                             @continue
                         @endif
-                        @php 
-                            $renderedGroups[] = $appointment->booking_group_id; 
-                            $groupAppointments = App\Models\Appointment::with(['service', 'user'])
-                                ->where('booking_group_id', $appointment->booking_group_id)
-                                ->orderBy('starts_at', 'asc')
-                                ->get();
+                        @php
+                            $renderedGroups[] = $appointment->booking_group_id;
+                            $groupAppointments = $groupedAppointments->get($appointment->booking_group_id, collect());
                         @endphp
-                        
+
                         <flux:table.row wire:key="group-header-{{ $appointment->booking_group_id }}" class="bg-zinc-50 dark:bg-zinc-800/40 border-t-2 border-zinc-200 dark:border-zinc-700/60">
                             <flux:table.cell colspan="6" class="py-4">
                                 <div class="flex items-center gap-4 px-4">
@@ -94,7 +91,7 @@
                                             Booking <span class="font-normal text-zinc-500 dark:text-zinc-400">#{{ strtoupper(substr($appointment->booking_group_id, 0, 8)) }}</span>
                                         </div>
                                         <div class="mt-0.5 text-xs text-zinc-500">
-                                            Booked on {{ $groupAppointments->first()->created_at->format('M j, Y') }} &bull; {{ $groupAppointments->count() }} Sessions
+                                            Booked on {{ $groupAppointments->first()?->created_at?->format('M j, Y') ?? 'N/A' }} &bull; {{ $groupAppointments->count() }} Sessions
                                         </div>
                                     </div>
                                 </div>
@@ -120,8 +117,50 @@
 
     {{-- Pagination --}}
     @if($appointments->hasPages())
-        <div class="mt-4" wire:key="appointments-pagination-{{ $appointments->currentPage() }}">
-            <flux:pagination :paginator="$appointments" />
+        @php
+            $currentPage = $appointments->currentPage();
+            $lastPage = $appointments->lastPage();
+            $baseUrl = url('appointments');
+        @endphp
+        <div class="@container pt-3 border-t border-zinc-100 dark:border-zinc-700 flex justify-between items-center gap-3 mt-4">
+            {{-- Results summary --}}
+            <div class="text-zinc-500 dark:text-zinc-400 text-xs font-medium whitespace-nowrap">
+                Showing {{ $appointments->firstItem() }} to {{ $appointments->lastItem() }} of {{ $appointments->total() }} results
+            </div>
+
+            {{-- Page links --}}
+            <div class="flex items-center bg-white border border-zinc-200 rounded-[8px] p-[1px] dark:bg-white/10 dark:border-white/10">
+                {{-- Previous --}}
+                @if($currentPage <= 1)
+                    <span class="flex justify-center items-center size-6 rounded-[6px] text-zinc-300 dark:text-zinc-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M9.78 4.22a.75.75 0 0 1 0 1.06L7.06 8l2.72 2.72a.75.75 0 1 1-1.06 1.06L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" /></svg>
+                    </span>
+                @else
+                    <a href="{{ $baseUrl }}?page={{ $currentPage - 1 }}" class="flex justify-center items-center size-6 rounded-[6px] text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/20 hover:text-zinc-800 dark:hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M9.78 4.22a.75.75 0 0 1 0 1.06L7.06 8l2.72 2.72a.75.75 0 1 1-1.06 1.06L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" /></svg>
+                    </a>
+                @endif
+
+                {{-- Page numbers --}}
+                @for($page = 1; $page <= $lastPage; $page++)
+                    @if($page == $currentPage)
+                        <span class="text-xs h-6 px-2 rounded-[6px] font-medium bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-sm flex items-center justify-center">{{ $page }}</span>
+                    @else
+                        <a href="{{ $baseUrl }}?page={{ $page }}" class="text-xs h-6 px-2 rounded-[6px] font-medium text-zinc-400 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/20 hover:text-zinc-800 dark:hover:text-white flex items-center justify-center">{{ $page }}</a>
+                    @endif
+                @endfor
+
+                {{-- Next --}}
+                @if($currentPage >= $lastPage)
+                    <span class="flex justify-center items-center size-6 rounded-[6px] text-zinc-300 dark:text-zinc-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
+                    </span>
+                @else
+                    <a href="{{ $baseUrl }}?page={{ $currentPage + 1 }}" class="flex justify-center items-center size-6 rounded-[6px] text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/20 hover:text-zinc-800 dark:hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
+                    </a>
+                @endif
+            </div>
         </div>
     @endif
 

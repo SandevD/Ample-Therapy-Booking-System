@@ -300,7 +300,6 @@ class Index extends Component
     {
         $appointments = Appointment::query()
             ->with(['service', 'user'])
-            ->with(['service', 'user'])
             ->when(auth()->user()->hasRole('Customer'), fn($q) => $q->where('customer_email', auth()->user()->email))
             ->when(auth()->user()->hasRole('Staff') && !auth()->user()->hasRole('Super Admin'), fn($q) => $q->where('user_id', auth()->id()))
             ->when($this->search, fn($q) => $q->where(function ($q2) {
@@ -313,7 +312,23 @@ class Index extends Component
             ->orderBy('starts_at', 'desc')
             ->paginate(15);
 
-        $services = Service::active()->orderBy('name')->get();
+        // Pre-load all grouped appointments for the current page in one query
+        // This prevents N+1 queries in the blade template and keeps data within pagination bounds
+        $groupIds = $appointments->getCollection()
+            ->pluck('booking_group_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $groupedAppointments = collect();
+        if ($groupIds->isNotEmpty()) {
+            $groupedAppointments = Appointment::with(['service', 'user'])
+                ->whereIn('booking_group_id', $groupIds)
+                ->orderBy('starts_at', 'asc')
+                ->get()
+                ->groupBy('booking_group_id');
+        }
+
         $services = Service::active()->orderBy('name')->get();
         // Consolidate Staff query logic - allow Super Admins to see all, Staff to see only themselves
         $staffQuery = User::role('Staff')->active()->orderBy('name');
@@ -324,6 +339,7 @@ class Index extends Component
 
         return view('livewire.admin.appointments.index', [
             'appointments' => $appointments,
+            'groupedAppointments' => $groupedAppointments,
             'services' => $services,
             'staffMembers' => $staffMembers,
             'availableStaff' => $this->getAvailableStaff(),
