@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
     @include('partials.head')
@@ -108,8 +108,20 @@
 
         <flux:spacer />
 
+        {{-- Theme Switch --}}
+        <div class="border-t border-zinc-100 dark:border-zinc-800 px-3 pt-3 pb-1">
+            <div class="mb-1.5 px-1 text-[11px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                {{ __('Theme') }}
+            </div>
+            <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" size="sm" class="w-full">
+                <flux:radio value="light" icon="sun" title="{{ __('Light') }}" />
+                <flux:radio value="dark" icon="moon" title="{{ __('Dark') }}" />
+                <flux:radio value="system" icon="computer-desktop" title="{{ __('System') }}" />
+            </flux:radio.group>
+        </div>
+
         {{-- User Menu --}}
-        <div class="border-t border-zinc-100 dark:border-zinc-800 p-2">
+        <div class="border-t border-zinc-100 dark:border-zinc-800 p-2 mt-2">
             <flux:dropdown position="top" align="start" class="w-full">
                 <button
                     class="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800">
