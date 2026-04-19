@@ -25,6 +25,10 @@ class Wizard extends Component
     // Multi-session slot accumulator: [['date' => 'Y-m-d', 'time' => 'H:i'], ...]
     public array $selectedSlots = [];
 
+    // Auto-fill (recurring) — used when booking multi-session services
+    public string $autoFillInterval = 'weekly';
+    public array $autoFillSkipped = [];
+
     public string $notes = '';
 
     public function mount(): void
@@ -66,20 +70,121 @@ class Wizard extends Component
         }
 
         $this->selectedSlots[] = ['date' => $date, 'time' => $time];
+        $this->sortSelectedSlots();
         $this->selectedDate = $date;
         $this->selectedTime = $time;
-
-        if (count($this->selectedSlots) >= $service->session_count) {
-            $this->nextStep();
-        }
+        $this->autoFillSkipped = [];
     }
 
     public function removeSlot(int $index): void
     {
         unset($this->selectedSlots[$index]);
         $this->selectedSlots = array_values($this->selectedSlots);
-        // Reset the time highlight so nothing looks selected after removal
+        $this->sortSelectedSlots();
         $this->selectedTime = null;
+        $this->autoFillSkipped = [];
+    }
+
+    public function proceedToConfirm(): void
+    {
+        $service = Service::find($this->selectedServiceId);
+        if ($service && count($this->selectedSlots) >= $service->session_count) {
+            $this->nextStep();
+        }
+    }
+
+    private function sortSelectedSlots(): void
+    {
+        $this->selectedSlots = collect($this->selectedSlots)
+            ->sortBy(fn($s) => $s['date'] . ' ' . $s['time'])
+            ->values()
+            ->all();
+    }
+
+    public function autoFillRemaining(): void
+    {
+        $this->autoFillSkipped = [];
+        $service = Service::find($this->selectedServiceId);
+
+        if (!$service || empty($this->selectedSlots)) {
+            return;
+        }
+
+        $remaining = $service->session_count - count($this->selectedSlots);
+        if ($remaining <= 0) {
+            return;
+        }
+
+        $sorted = collect($this->selectedSlots)
+            ->sortBy(fn($s) => $s['date'] . ' ' . $s['time'])
+            ->values();
+        $anchor = $sorted->last();
+
+        $days = $this->intervalDays($this->autoFillInterval);
+        $cursor = Carbon::parse($anchor['date']);
+        $time = $anchor['time'];
+
+        for ($i = 0; $i < $remaining; $i++) {
+            $cursor->addDays($days);
+            $candidateDate = $cursor->format('Y-m-d');
+
+            $duplicate = collect($this->selectedSlots)->contains(
+                fn($s) => $s['date'] === $candidateDate && $s['time'] === $time
+            );
+
+            if ($duplicate || !$this->isSlotAvailable($candidateDate, $time, $service)) {
+                $this->autoFillSkipped[] = $candidateDate;
+                continue;
+            }
+
+            $this->selectedSlots[] = ['date' => $candidateDate, 'time' => $time];
+        }
+
+        $this->sortSelectedSlots();
+        $this->selectedDate = $cursor->format('Y-m-d');
+    }
+
+    private function intervalDays(string $key): int
+    {
+        return match ($key) {
+            'biweekly' => 14,
+            'every_2d' => 2,
+            'every_3d' => 3,
+            default    => 7,
+        };
+    }
+
+    private function isSlotAvailable(string $date, string $time, Service $service): bool
+    {
+        $startsAt = Carbon::parse($date . ' ' . $time);
+        $endsAt   = $startsAt->copy()->addMinutes($service->duration);
+
+        $businessStart = Carbon::parse($date . ' 09:00:00');
+        $businessEnd   = Carbon::parse($date . ' 17:00:00');
+        if ($startsAt->lt($businessStart) || $endsAt->gt($businessEnd)) {
+            return false;
+        }
+
+        // Auto-fill avoids ANY active appointment (confirmed or pending/booked) to reduce collisions.
+        $dbConflict = Appointment::where('user_id', $this->selectedStaffId)
+            ->whereDate('starts_at', $date)
+            ->whereIn('status', ['confirmed', 'booked'])
+            ->where(function ($q) use ($startsAt, $endsAt) {
+                $q->where('starts_at', '<', $endsAt)
+                  ->where('ends_at', '>', $startsAt);
+            })
+            ->exists();
+        if ($dbConflict) {
+            return false;
+        }
+
+        $pendingConflict = collect($this->selectedSlots)->contains(function ($s) use ($startsAt, $endsAt, $service) {
+            $ps = Carbon::parse($s['date'] . ' ' . $s['time']);
+            $pe = $ps->copy()->addMinutes($service->duration);
+            return $startsAt->lt($pe) && $endsAt->gt($ps);
+        });
+
+        return !$pendingConflict;
     }
 
     public function nextStep(): void

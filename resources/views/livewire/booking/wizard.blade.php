@@ -107,26 +107,124 @@
                 @endif
             </div>
 
-            {{-- Selected slots sidebar for multi-session --}}
+            {{-- Selected slots --}}
             @if($selectedService && $selectedService->session_count > 1 && count($selectedSlots) > 0)
-                <div class="rounded-xl border border-fuchsia-100 bg-fuchsia-50 p-4 dark:border-violet-500/20 dark:bg-violet-500/5">
-                    <h4 class="text-sm font-semibold text-fuchsia-700 dark:text-violet-300 mb-3">
-                        Selected Slots ({{ count($selectedSlots) }}/{{ $selectedService->session_count }})
-                    </h4>
-                    <ul class="space-y-2">
+                @php
+                    $picked = count($selectedSlots);
+                    $target = $selectedService->session_count;
+                    $pct = min(100, ($picked / $target) * 100);
+                    $isComplete = $picked >= $target;
+                @endphp
+                <div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-none">
+                    {{-- Header --}}
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-300">
+                                <flux:icon name="rectangle-stack" class="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Selected Slots</h4>
+                                <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                                    {{ $picked }} of {{ $target }} sessions chosen
+                                    @if($isComplete)
+                                        <span class="text-emerald-600 dark:text-emerald-400 font-medium">&bull; Ready to confirm</span>
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                        @if($isComplete)
+                            <flux:button wire:click="proceedToConfirm" icon:trailing="arrow-right" variant="primary" size="sm">
+                                Next: Confirm
+                            </flux:button>
+                        @endif
+                    </div>
+
+                    {{-- Progress bar --}}
+                    <div class="h-1 bg-zinc-100 rounded-full overflow-hidden dark:bg-zinc-800 mb-4">
+                        <div class="h-full bg-violet-500/80 dark:bg-violet-500/70 transition-all duration-300"
+                            style="width: {{ $pct }}%"></div>
+                    </div>
+
+                    {{-- Slot chips --}}
+                    <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                         @foreach($selectedSlots as $index => $slot)
-                            <li class="flex items-center justify-between text-sm">
-                                <span class="text-zinc-700 dark:text-zinc-300">
-                                    <span class="font-medium">Slot {{ $index + 1 }}:</span>
-                                    {{ \Carbon\Carbon::parse($slot['date'])->format('M d, Y') }} at {{ $slot['time'] }}
-                                </span>
+                            @php
+                                $slotStart = \Carbon\Carbon::parse($slot['date'] . ' ' . $slot['time']);
+                                $slotEnd = $slotStart->copy()->addMinutes($selectedService->duration);
+                            @endphp
+                            <li class="group flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/40">
+                                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-700 text-xs font-semibold dark:text-violet-300">
+                                    {{ $index + 1 }}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                                        {{ $slotStart->format('D, M d') }}
+                                    </div>
+                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                        {{ $slotStart->format('H:i') }} &ndash; {{ $slotEnd->format('H:i') }}
+                                    </div>
+                                </div>
                                 <button wire:click="removeSlot({{ $index }})"
-                                    class="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-4 shrink-0">
-                                    Remove
+                                    title="Remove slot"
+                                    class="shrink-0 rounded-md p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-300 transition-colors">
+                                    <flux:icon name="x-mark" class="w-4 h-4" />
                                 </button>
                             </li>
                         @endforeach
                     </ul>
+                </div>
+            @endif
+
+            {{-- Auto-fill remaining slots --}}
+            @if($selectedService && $selectedService->session_count > 1 && count($selectedSlots) > 0 && count($selectedSlots) < $selectedService->session_count)
+                @php $remainingCount = $selectedService->session_count - count($selectedSlots); @endphp
+                <div class="rounded-xl border border-sky-200/60 bg-sky-50/70 p-4 dark:border-sky-500/20 dark:bg-sky-500/5">
+                    <div class="flex items-start gap-3">
+                        <flux:icon name="bolt" class="w-5 h-5 text-sky-600 dark:text-sky-300 shrink-0 mt-0.5" />
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-sky-900 dark:text-sky-200">
+                                Auto-fill remaining {{ $remainingCount }} {{ \Illuminate\Support\Str::plural('session', $remainingCount) }}
+                            </p>
+                            <p class="mt-1 text-xs text-sky-800/80 dark:text-sky-200/70">
+                                Same time as your last selected slot, recurring on the interval you choose. Unavailable dates will be skipped and listed below.
+                            </p>
+                            <div class="mt-3 flex flex-wrap items-center gap-3">
+                                <div class="w-48">
+                                    <flux:select wire:model="autoFillInterval" size="sm">
+                                        <option value="weekly">Weekly (+7 days)</option>
+                                        <option value="biweekly">Bi-weekly (+14 days)</option>
+                                        <option value="every_2d">Every 2 days</option>
+                                        <option value="every_3d">Every 3 days</option>
+                                    </flux:select>
+                                </div>
+                                <flux:button wire:click="autoFillRemaining" icon="bolt" variant="primary" size="sm">
+                                    Auto-fill
+                                </flux:button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Skipped dates warning --}}
+            @if(!empty($autoFillSkipped))
+                <div class="rounded-xl border border-amber-200/60 bg-amber-50/70 p-4 dark:border-amber-500/20 dark:bg-amber-500/5">
+                    <div class="flex items-start gap-3">
+                        <flux:icon name="exclamation-triangle" class="w-5 h-5 text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                                {{ count($autoFillSkipped) }} {{ \Illuminate\Support\Str::plural('date', count($autoFillSkipped)) }} skipped
+                            </p>
+                            <p class="mt-1 text-xs text-amber-800/80 dark:text-amber-200/70">
+                                These dates were unavailable (conflict or outside business hours). Pick alternatives manually:
+                            </p>
+                            <ul class="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-amber-800 dark:text-amber-200 list-disc pl-4">
+                                @foreach($autoFillSkipped as $d)
+                                    <li>{{ \Carbon\Carbon::parse($d)->format('D, M d, Y') }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             @endif
 
@@ -218,105 +316,129 @@
                 <flux:heading size="xl">Confirm Details</flux:heading>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-lg border border-zinc-100 overflow-hidden dark:bg-zinc-900/60 dark:border-zinc-800 dark:shadow-none">
+            <div class="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden dark:bg-zinc-900/60 dark:border-zinc-800 dark:shadow-none">
 
                 {{-- Card Header --}}
-                <div class="bg-gradient-to-br from-red-500 to-orange-500 dark:from-red-500/80 dark:to-orange-500/80 p-8 text-white relative overflow-hidden">
-                    <div class="absolute top-0 right-0 p-8 opacity-10">
-                        <flux:icon name="check-circle" class="w-32 h-32" />
-                    </div>
-                    <div class="relative z-10">
-                        <h3 class="text-2xl font-bold">Booking Summary</h3>
-                        <p class="text-red-50/90 mt-1">Please review your appointment details</p>
+                <div class="relative overflow-hidden border-b border-zinc-200 dark:border-zinc-800 px-6 py-5 bg-gradient-to-r from-red-500/5 via-orange-500/5 to-transparent dark:from-red-500/10 dark:via-orange-500/5 dark:to-transparent">
+                    <div class="flex items-center gap-4">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-md shadow-red-500/20 dark:shadow-none">
+                            <flux:icon name="check-circle" class="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Booking Summary</h3>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Please review your appointment details before confirming</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="p-8 space-y-6">
-                    {{-- Service --}}
-                    <div class="flex items-start gap-4">
-                        <div class="p-2 rounded-lg bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300">
-                            <flux:icon name="squares-plus" class="w-6 h-6" />
+                <div class="p-6 space-y-5">
+                    {{-- Top row: Service + Specialist --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="flex h-7 w-7 items-center justify-center rounded-md bg-red-500/10 text-red-600 dark:text-red-300">
+                                    <flux:icon name="squares-plus" class="w-4 h-4" />
+                                </div>
+                                <p class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Service</p>
+                            </div>
+                            <h4 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 leading-snug">{{ $selectedService->name }}</h4>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{{ $selectedService->duration }} min per session</p>
                         </div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Service</p>
-                            <h4 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $selectedService->name }}</h4>
-                            <p class="text-sm text-zinc-400 dark:text-zinc-500">{{ $selectedService->duration }} minutes per session</p>
+
+                        <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="flex h-7 w-7 items-center justify-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                                    <flux:icon name="user" class="w-4 h-4" />
+                                </div>
+                                <p class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Specialist</p>
+                            </div>
+                            <h4 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 leading-snug">{{ $selectedStaff->name }}</h4>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Your therapist</p>
                         </div>
                     </div>
 
-                    {{-- Staff --}}
-                    <div class="flex items-start gap-4">
-                        <div class="p-2 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300">
-                            <flux:icon name="user" class="w-6 h-6" />
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Specialist</p>
-                            <h4 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $selectedStaff->name }}</h4>
-                        </div>
-                    </div>
-
-                    {{-- Date / Time --}}
+                    {{-- Sessions block --}}
                     @if($selectedService->session_count > 1)
-                        {{-- Multi-session: list all slots --}}
-                        <div class="flex items-start gap-4">
-                            <div class="p-2 rounded-lg bg-fuchsia-50 text-fuchsia-600 dark:bg-violet-500/10 dark:text-violet-300">
-                                <flux:icon name="rectangle-stack" class="w-6 h-6" />
+                        <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex h-7 w-7 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-300">
+                                        <flux:icon name="rectangle-stack" class="w-4 h-4" />
+                                    </div>
+                                    <p class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Scheduled Sessions</p>
+                                </div>
+                                <span class="text-xs font-medium text-violet-700 bg-violet-500/10 px-2 py-0.5 rounded-full dark:text-violet-300">
+                                    {{ $selectedService->session_count }} sessions
+                                </span>
                             </div>
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                                    Booking Date: {{ now()->format('M j, Y') }} ({{ $selectedService->session_count }} Sessions)
-                                </p>
-                                <ul class="mt-1 space-y-1">
-                                    @foreach($selectedSlots as $index => $slot)
-                                        <li class="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                                            Session {{ $index + 1 }}: {{ \Carbon\Carbon::parse($slot['date'])->format('M d, Y') }} at {{ $slot['time'] }}
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </div>
+                            <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                @foreach($selectedSlots as $index => $slot)
+                                    @php
+                                        $s = \Carbon\Carbon::parse($slot['date'] . ' ' . $slot['time']);
+                                        $e = $s->copy()->addMinutes($selectedService->duration);
+                                    @endphp
+                                    <li class="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/60">
+                                        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-700 text-xs font-semibold dark:text-violet-300">
+                                            {{ $index + 1 }}
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                                                {{ $s->format('D, M d, Y') }}
+                                            </div>
+                                            <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                                {{ $s->format('H:i') }} &ndash; {{ $e->format('H:i') }}
+                                            </div>
+                                        </div>
+                                    </li>
+                                @endforeach
+                            </ul>
                         </div>
                     @else
-                        {{-- Single session: date + time grid --}}
-                        <div class="grid grid-cols-2 gap-6">
-                            <div class="flex items-start gap-4">
-                                <div class="p-2 rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-300">
-                                    <flux:icon name="calendar" class="w-6 h-6" />
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="flex h-7 w-7 items-center justify-center rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-300">
+                                        <flux:icon name="calendar" class="w-4 h-4" />
+                                    </div>
+                                    <p class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Date</p>
                                 </div>
-                                <div>
-                                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Date</p>
-                                    <h4 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                        {{ \Carbon\Carbon::parse($selectedDate)->format('M d, Y') }}
-                                    </h4>
-                                </div>
+                                <h4 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                    {{ \Carbon\Carbon::parse($selectedDate)->format('D, M d, Y') }}
+                                </h4>
                             </div>
-                            <div class="flex items-start gap-4">
-                                <div class="p-2 rounded-lg bg-green-50 text-green-600 dark:bg-emerald-500/10 dark:text-emerald-300">
-                                    <flux:icon name="clock" class="w-6 h-6" />
+                            <div class="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
+                                        <flux:icon name="clock" class="w-4 h-4" />
+                                    </div>
+                                    <p class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Time</p>
                                 </div>
-                                <div>
-                                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Time</p>
-                                    <h4 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $selectedTime }}</h4>
-                                </div>
+                                @php
+                                    $ss = \Carbon\Carbon::parse($selectedDate . ' ' . $selectedTime);
+                                    $ee = $ss->copy()->addMinutes($selectedService->duration);
+                                @endphp
+                                <h4 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                    {{ $ss->format('H:i') }} &ndash; {{ $ee->format('H:i') }}
+                                </h4>
                             </div>
                         </div>
                     @endif
 
-                    <flux:separator />
-
-                    <div class="flex items-center justify-between pt-2">
-                        <span class="text-lg font-medium text-zinc-600 dark:text-zinc-300">Total Price</span>
-                        <div class="text-right">
+                    {{-- Total Price --}}
+                    <div class="rounded-xl border border-zinc-200 bg-gradient-to-r from-red-500/5 to-orange-500/5 p-4 flex items-center justify-between dark:border-zinc-800 dark:from-red-500/10 dark:to-orange-500/5">
+                        <div>
+                            <p class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Total Price</p>
                             @if($selectedService->session_count > 1)
-                                <p class="text-xs text-zinc-400 dark:text-zinc-500">package price — covers all {{ $selectedService->session_count }} sessions</p>
+                                <p class="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">package — covers all {{ $selectedService->session_count }} sessions</p>
                             @endif
-                            <span class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                                @if((float)$selectedService->price === 0.0)
-                                    FREE
-                                @else
-                                    £{{ $selectedService->price }}
-                                @endif
-                            </span>
                         </div>
+                        <span class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                            @if((float)$selectedService->price === 0.0)
+                                <span class="text-emerald-600 dark:text-emerald-400">FREE</span>
+                            @else
+                                £{{ $selectedService->price }}
+                            @endif
+                        </span>
                     </div>
                 </div>
             </div>
