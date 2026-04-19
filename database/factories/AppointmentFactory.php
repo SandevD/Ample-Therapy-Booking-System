@@ -4,7 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Appointment;
 use App\Models\Service;
-use App\Models\Staff;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -32,7 +32,7 @@ class AppointmentFactory extends Factory
 
         return [
             'service_id' => Service::factory(),
-            'staff_id' => Staff::factory(),
+            'user_id' => User::factory(),
             'customer_name' => fake()->name(),
             'customer_email' => fake()->safeEmail(),
             'customer_phone' => fake()->phoneNumber(),
