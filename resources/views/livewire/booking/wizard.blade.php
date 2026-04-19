@@ -42,7 +42,7 @@
                                         FREE
                                     </span>
                                 @else
-                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">${{ $service->price }}</span>
+                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">£{{ $service->price }}</span>
                                 @endif
                                 <div class="flex items-center gap-2">
                                     @if($service->session_count > 1)
@@ -315,7 +315,7 @@
                                 @if((float)$selectedService->price === 0.0)
                                     FREE
                                 @else
-                                    ${{ $selectedService->price }}
+                                    £{{ $selectedService->price }}
                                 @endif
                             </span>
                         </div>

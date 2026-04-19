@@ -179,7 +179,7 @@
                         @foreach($services as $service)
                             <option value="{{ $service->id }}">
                                 {{ $service->name }} ({{ $service->duration }} min -
-                                ${{ number_format($service->price, 2) }})
+                                £{{ number_format($service->price, 2) }})
                             </option>
                         @endforeach
                     </flux:select>

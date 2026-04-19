@@ -66,7 +66,7 @@
                                 @if((float)$service->price === 0.0)
                                     <div class="text-lg font-bold text-emerald-600 dark:text-emerald-400">FREE</div>
                                 @else
-                                    <div class="text-lg font-bold text-zinc-900 dark:text-zinc-100">${{ number_format($service->price, 0) }}</div>
+                                    <div class="text-lg font-bold text-zinc-900 dark:text-zinc-100">£{{ number_format($service->price, 0) }}</div>
                                 @endif
                                 <div class="text-xs text-zinc-500">price</div>
                             </div>
