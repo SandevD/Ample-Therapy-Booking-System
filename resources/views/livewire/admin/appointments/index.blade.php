@@ -95,16 +95,25 @@
                                         <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                             Booking <span class="font-normal text-zinc-500 dark:text-zinc-400">#{{ strtoupper(substr($appointment->booking_group_id, 0, 8)) }}</span>
                                         </div>
+                                        @php
+                                            $total = $groupTotals[$appointment->booking_group_id] ?? $groupAppointments->count();
+                                            $shown = $groupAppointments->count();
+                                        @endphp
                                         <div class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                            Booked on {{ $groupAppointments->first()?->created_at?->format('M j, Y') ?? 'N/A' }} &bull; {{ $groupAppointments->count() }} Sessions
+                                            Booked on {{ $groupAppointments->first()?->created_at?->format('M j, Y') ?? 'N/A' }} &bull;
+                                            @if($shown < $total)
+                                                Showing {{ $shown }} of {{ $total }} Sessions
+                                            @else
+                                                {{ $total }} Sessions
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
                             </flux:table.cell>
                         </flux:table.row>
 
-                        @foreach($groupAppointments as $index => $groupAppt)
-                            @include('livewire.admin.appointments.appointment-row', ['appointment' => $groupAppt, 'sessionNumber' => $index + 1, 'wireKey' => 'appt-group-' . $groupAppt->id])
+                        @foreach($groupAppointments as $groupAppt)
+                            @include('livewire.admin.appointments.appointment-row', ['appointment' => $groupAppt, 'sessionNumber' => $sessionNumbers[$groupAppt->id] ?? null, 'wireKey' => 'appt-group-' . $groupAppt->id])
                         @endforeach
                     @else
                         @include('livewire.admin.appointments.appointment-row', ['appointment' => $appointment, 'sessionNumber' => null, 'wireKey' => 'appt-single-' . $appointment->id])
