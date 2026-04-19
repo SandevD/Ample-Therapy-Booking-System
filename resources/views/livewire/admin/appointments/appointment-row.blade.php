@@ -1,4 +1,4 @@
-<flux:table.row wire:key="{{ $wireKey ?? 'appt-' . ($appointment->id ?? uniqid()) }}" class="{{ isset($sessionNumber) ? 'bg-zinc-50/30 dark:bg-zinc-800/20' : '' }}">
+<flux:table.row wire:key="{{ $wireKey ?? 'appt-' . ($appointment->id ?? uniqid()) }}" class="{{ isset($sessionNumber) ? 'bg-zinc-50/40 dark:bg-zinc-900/20' : '' }}">
     <flux:table.cell class="{{ isset($sessionNumber) ? 'pl-6' : '' }}">
         <div class="flex items-start gap-3 px-2">
             @if(isset($sessionNumber))
@@ -8,10 +8,10 @@
             @endif
             <div>
                 @if(isset($sessionNumber))
-                    <div class="font-bold text-red-600 dark:text-red-400 mb-0.5 text-xs uppercase tracking-wider">Session {{ $sessionNumber }}</div>
+                    <div class="font-semibold text-red-600/90 dark:text-red-400/80 mb-0.5 text-[11px] uppercase tracking-wider">Session {{ $sessionNumber }}</div>
                 @endif
                 <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $appointment->starts_at->format('M j, Y') }}</div>
-                <div class="text-sm text-zinc-500 mt-0.5">
+                <div class="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
                     {{ $appointment->starts_at->format('g:i A') }} -
                     {{ $appointment->ends_at->format('g:i A') }}
                 </div>
@@ -19,18 +19,18 @@
         </div>
     </flux:table.cell>
     <flux:table.cell>
-        <div class="font-medium">{{ $appointment->customer_name }}</div>
-        <div class="text-sm text-zinc-500">{{ $appointment->customer_email }}</div>
+        <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $appointment->customer_name }}</div>
+        <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $appointment->customer_email }}</div>
     </flux:table.cell>
     <flux:table.cell>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 text-zinc-700 dark:text-zinc-200">
             <span class="h-2 w-2 rounded-full"
                 style="background-color: {{ $appointment->service->color ?? '#999' }}"></span>
             {{ $appointment->service->name ?? 'Unknown Service' }}
         </div>
     </flux:table.cell>
     <flux:table.cell>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 text-zinc-700 dark:text-zinc-200">
             @if($appointment->user)
                 <flux:avatar :initials="$appointment->user->initials()" size="xs" />
                 {{ $appointment->user->name }}
@@ -41,40 +41,38 @@
         </div>
     </flux:table.cell>
     <flux:table.cell>
+        @php
+            $statusClasses = [
+                'booked'    => 'bg-amber-100 text-amber-800 ring-amber-200/60 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
+                'confirmed' => 'bg-blue-100 text-blue-800 ring-blue-200/60 dark:bg-sky-500/10 dark:text-sky-300 dark:ring-sky-500/20',
+                'completed' => 'bg-green-100 text-green-800 ring-green-200/60 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20',
+                'cancelled' => 'bg-red-100 text-red-800 ring-red-200/60 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
+            ];
+            $pillBase = 'inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium ring-1 ring-inset';
+            $pillClass = $pillBase . ' ' . ($statusClasses[$appointment->status] ?? 'bg-zinc-100 text-zinc-700 ring-zinc-200 dark:bg-zinc-800/60 dark:text-zinc-300 dark:ring-zinc-700');
+        @endphp
         @hasrole('Super Admin|Staff')
         <flux:dropdown position="bottom" align="start">
-            <button type="button" class="inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-medium cursor-pointer
-                                    @if($appointment->status === 'booked') bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400
-                                    @elseif($appointment->status === 'confirmed') bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
-                                    @elseif($appointment->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400
-                                    @elseif($appointment->status === 'cancelled') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
-                                    @else bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300
-                                    @endif">
+            <button type="button" class="{{ $pillClass }} cursor-pointer">
                 {{ ucfirst($appointment->status) }}
             </button>
             <flux:menu>
                 <flux:menu.item wire:click="updateStatus({{ $appointment->id }}, 'booked')">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-amber-100 text-amber-800">Booked</span>
+                    <span class="{{ $pillBase }} {{ $statusClasses['booked'] }}">Booked</span>
                 </flux:menu.item>
                 <flux:menu.item wire:click="updateStatus({{ $appointment->id }}, 'confirmed')">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-blue-100 text-blue-800">Confirmed</span>
+                    <span class="{{ $pillBase }} {{ $statusClasses['confirmed'] }}">Confirmed</span>
                 </flux:menu.item>
                 <flux:menu.item wire:click="updateStatus({{ $appointment->id }}, 'completed')">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-green-100 text-green-800">Completed</span>
+                    <span class="{{ $pillBase }} {{ $statusClasses['completed'] }}">Completed</span>
                 </flux:menu.item>
                 <flux:menu.item wire:click="updateStatus({{ $appointment->id }}, 'cancelled')">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-red-100 text-red-800">Cancelled</span>
+                    <span class="{{ $pillBase }} {{ $statusClasses['cancelled'] }}">Cancelled</span>
                 </flux:menu.item>
             </flux:menu>
         </flux:dropdown>
         @else
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-medium
-                @if($appointment->status === 'booked') bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400
-                @elseif($appointment->status === 'confirmed') bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
-                @elseif($appointment->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400
-                @elseif($appointment->status === 'cancelled') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
-                @else bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300
-                @endif">
+            <span class="{{ $pillClass }}">
                 {{ ucfirst($appointment->status) }}
             </span>
         @endhasrole

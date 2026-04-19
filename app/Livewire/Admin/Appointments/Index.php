@@ -321,9 +321,34 @@ class Index extends Component
             ->values();
 
         $groupedAppointments = collect();
+        $sessionNumbers = [];
+        $groupTotals = [];
         if ($groupIds->isNotEmpty()) {
+            // Full unfiltered groups — establishes stable session numbering based on chronological order.
+            $fullGroups = Appointment::whereIn('booking_group_id', $groupIds)
+                ->orderBy('starts_at', 'asc')
+                ->get(['id', 'booking_group_id', 'starts_at'])
+                ->groupBy('booking_group_id');
+
+            foreach ($fullGroups as $gid => $items) {
+                $groupTotals[$gid] = $items->count();
+                foreach ($items->values() as $i => $item) {
+                    $sessionNumbers[$item->id] = $i + 1;
+                }
+            }
+
+            // Filtered sessions for display — same filters as main query so the list stays consistent.
             $groupedAppointments = Appointment::with(['service', 'user'])
                 ->whereIn('booking_group_id', $groupIds)
+                ->when(auth()->user()->hasRole('Customer'), fn($q) => $q->where('customer_email', auth()->user()->email))
+                ->when(auth()->user()->hasRole('Staff') && !auth()->user()->hasRole('Super Admin'), fn($q) => $q->where('user_id', auth()->id()))
+                ->when($this->search, fn($q) => $q->where(function ($q2) {
+                    $q2->where('customer_name', 'like', "%{$this->search}%")
+                        ->orWhere('customer_email', 'like', "%{$this->search}%");
+                }))
+                ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
+                ->when($this->staffFilter, fn($q) => $q->where('user_id', $this->staffFilter))
+                ->when($this->dateFilter, fn($q) => $q->whereDate('starts_at', $this->dateFilter))
                 ->orderBy('starts_at', 'asc')
                 ->get()
                 ->groupBy('booking_group_id');
@@ -340,6 +365,8 @@ class Index extends Component
         return view('livewire.admin.appointments.index', [
             'appointments' => $appointments,
             'groupedAppointments' => $groupedAppointments,
+            'sessionNumbers' => $sessionNumbers,
+            'groupTotals' => $groupTotals,
             'services' => $services,
             'staffMembers' => $staffMembers,
             'availableStaff' => $this->getAvailableStaff(),
