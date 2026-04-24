@@ -28,7 +28,7 @@ class Dashboard extends Component
                 'myCancelledBookings' => Appointment::where('customer_email', $user->email)->where('status', 'cancelled')->count(),
                 'myUpcomingAppointments' => $myUpcomingAppointments,
                 'isAdmin' => false,
-            ]);
+            ])->layout('components.layouts.app', ['title' => 'Dashboard']);
         }
 
         // Admin Stats
@@ -67,15 +67,6 @@ class Dashboard extends Component
             'upcomingAppointments' => $upcomingAppointments,
             'totalServices' => $totalServices,
             'isAdmin' => true,
-        ]);
-
-        return view('livewire.dashboard', [
-            'todayCount' => $todayCount,
-            'thisWeekCount' => $thisWeekCount,
-            'upcomingAppointments' => $upcomingAppointments,
-            'totalServices' => $totalServices,
-            'totalStaff' => $totalStaff,
-            'isAdmin' => true,
-        ]);
+        ])->layout('components.layouts.app', ['title' => 'Dashboard']);
     }
 }
