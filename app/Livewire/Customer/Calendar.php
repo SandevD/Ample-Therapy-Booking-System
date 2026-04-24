@@ -4,8 +4,10 @@ namespace App\Livewire\Customer;
 
 use App\Models\Appointment;
 use Carbon\Carbon;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('components.layouts.app')]
 class Calendar extends Component
 {
     public $currentMonth;
