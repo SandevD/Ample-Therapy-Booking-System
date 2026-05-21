@@ -10,6 +10,13 @@ use Spatie\Permission\Models\Role;
 
 class Dashboard extends Component
 {
+    public string $dateFilter = '';
+
+    public function mount(): void
+    {
+        $this->dateFilter = now()->toDateString();
+    }
+
     public function render()
     {
         $user = auth()->user();
@@ -18,7 +25,9 @@ class Dashboard extends Component
             $myTotalBookings = Appointment::where('customer_email', $user->email)->count();
             $myUpcomingAppointments = Appointment::where('customer_email', $user->email)
                 ->with(['service', 'user'])
-                ->upcoming()
+                ->where('status', 'confirmed')
+                ->whereDate('starts_at', $this->dateFilter)
+                ->orderBy('starts_at')
                 ->take(5)
                 ->get();
 
@@ -51,10 +60,11 @@ class Dashboard extends Component
             ->whereBetween('starts_at', [now(), now()->addDays(7)])
             ->count();
 
-        // Reset to showing confirmed appointments only, as requested
+        // Confirmed appointments on the selected date (defaults to today), soonest first.
         $upcomingAppointments = (clone $query)->with(['service', 'user'])
             ->where('status', 'confirmed')
-            ->upcoming()
+            ->whereDate('starts_at', $this->dateFilter)
+            ->orderBy('starts_at')
             ->take(5)
             ->get();
 

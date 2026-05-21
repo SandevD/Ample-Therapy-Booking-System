@@ -150,13 +150,18 @@
 
             {{-- Upcoming Appointments --}}
             <div class="lg:col-span-2 space-y-4">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <flux:heading size="lg">Upcoming Appointments</flux:heading>
-                    <a href="{{ route('admin.appointments') }}" wire:navigate
-                        class="inline-flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-                        View All
-                        <flux:icon name="arrow-right" class="h-4 w-4" />
-                    </a>
+                    <div class="flex items-center gap-3">
+                        <div class="w-40">
+                            <flux:input type="date" wire:model.live="dateFilter" />
+                        </div>
+                        <a href="{{ route('admin.appointments') }}" wire:navigate
+                            class="inline-flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 whitespace-nowrap">
+                            View All
+                            <flux:icon name="arrow-right" class="h-4 w-4" />
+                        </a>
+                    </div>
                 </div>
 
                 @if($upcomingAppointments->count() > 0)
@@ -198,8 +203,8 @@
                         <div class="mx-auto w-fit rounded-full bg-zinc-100 p-4 dark:bg-zinc-700">
                             <flux:icon name="calendar" class="h-10 w-10 text-zinc-400 dark:text-zinc-500" />
                         </div>
-                        <div class="mt-4 font-medium text-zinc-600 dark:text-zinc-400">No upcoming appointments</div>
-                        <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-500">Get started by creating your first booking
+                        <div class="mt-4 font-medium text-zinc-600 dark:text-zinc-400">No confirmed appointments on this date</div>
+                        <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-500">Pick another date or create a booking
                         </div>
                         <a href="{{ route('admin.appointments') }}" wire:navigate
                             class="mt-6 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2 text-sm font-medium text-white shadow-lg transition-all duration-300 ease-out hover:shadow-xl hover:scale-105">
@@ -322,8 +327,11 @@
 
             {{-- Upcoming Appointments (Main Column) --}}
             <div class="lg:col-span-2 space-y-4">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <flux:heading size="lg">Your Upcoming Appointments</flux:heading>
+                    <div class="w-40">
+                        <flux:input type="date" wire:model.live="dateFilter" />
+                    </div>
                 </div>
 
                 @if($myUpcomingAppointments->count() > 0)
@@ -362,8 +370,8 @@
                         <div class="mx-auto w-fit rounded-full bg-zinc-100 p-4 dark:bg-zinc-700">
                             <flux:icon name="calendar" class="h-10 w-10 text-zinc-400 dark:text-zinc-500" />
                         </div>
-                        <div class="mt-4 font-medium text-zinc-600 dark:text-zinc-400">No upcoming appointments</div>
-                        <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-500">Book your next visit now!</div>
+                        <div class="mt-4 font-medium text-zinc-600 dark:text-zinc-400">No confirmed appointments on this date</div>
+                        <div class="mt-1 text-sm text-zinc-500 dark:text-zinc-500">Pick another date or book your next visit!</div>
                         <a href="{{ route('booking.wizard') }}" wire:navigate
                             class="mt-6 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2 text-sm font-medium text-white shadow-lg transition-all duration-300 ease-out hover:shadow-xl hover:scale-105">
                             <flux:icon name="plus" class="h-4 w-4" />
