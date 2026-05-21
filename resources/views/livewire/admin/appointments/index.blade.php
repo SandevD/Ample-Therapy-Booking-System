@@ -36,6 +36,14 @@
 
         <div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-center">
             <div class="w-full sm:w-40">
+                <flux:select wire:model.live="timeFilter" placeholder="All Time">
+                    <option value="upcoming">Upcoming</option>
+                    <option value="past">Past</option>
+                    <option value="">All Time</option>
+                </flux:select>
+            </div>
+
+            <div class="w-full sm:w-40">
                 <flux:select wire:model.live="statusFilter" placeholder="All Statuses">
                     <option value="">All Statuses</option>
                     <option value="booked">Booked</option>
@@ -134,7 +142,6 @@
         @php
             $currentPage = $appointments->currentPage();
             $lastPage = $appointments->lastPage();
-            $baseUrl = url('appointments');
         @endphp
         <div class="@container pt-3 border-t border-zinc-100 dark:border-zinc-800/70 flex justify-between items-center gap-3 mt-4">
             {{-- Results summary --}}
@@ -150,9 +157,9 @@
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M9.78 4.22a.75.75 0 0 1 0 1.06L7.06 8l2.72 2.72a.75.75 0 1 1-1.06 1.06L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" /></svg>
                     </span>
                 @else
-                    <a href="{{ $baseUrl }}?page={{ $currentPage - 1 }}" class="flex justify-center items-center size-6 rounded-[6px] text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-100">
+                    <button type="button" wire:click="previousPage" class="flex justify-center items-center size-6 rounded-[6px] text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-100">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M9.78 4.22a.75.75 0 0 1 0 1.06L7.06 8l2.72 2.72a.75.75 0 1 1-1.06 1.06L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" /></svg>
-                    </a>
+                    </button>
                 @endif
 
                 {{-- Page numbers --}}
@@ -160,7 +167,7 @@
                     @if($page == $currentPage)
                         <span class="text-xs h-6 px-2 rounded-[6px] font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm flex items-center justify-center">{{ $page }}</span>
                     @else
-                        <a href="{{ $baseUrl }}?page={{ $page }}" class="text-xs h-6 px-2 rounded-[6px] font-medium text-zinc-400 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-100 flex items-center justify-center">{{ $page }}</a>
+                        <button type="button" wire:click="gotoPage({{ $page }})" class="text-xs h-6 px-2 rounded-[6px] font-medium text-zinc-400 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-100 flex items-center justify-center">{{ $page }}</button>
                     @endif
                 @endfor
 
@@ -170,9 +177,9 @@
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
                     </span>
                 @else
-                    <a href="{{ $baseUrl }}?page={{ $currentPage + 1 }}" class="flex justify-center items-center size-6 rounded-[6px] text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-100">
+                    <button type="button" wire:click="nextPage" class="flex justify-center items-center size-6 rounded-[6px] text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-100">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
-                    </a>
+                    </button>
                 @endif
             </div>
         </div>

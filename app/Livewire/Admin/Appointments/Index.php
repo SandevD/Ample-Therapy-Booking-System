@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Flux\Flux;
@@ -14,10 +15,20 @@ class Index extends Component
 {
     use WithPagination;
 
+    #[Url]
     public string $search = '';
+
+    #[Url]
     public string $statusFilter = '';
+
+    #[Url]
     public string $staffFilter = '';
+
+    #[Url]
     public string $dateFilter = '';
+
+    #[Url]
+    public string $timeFilter = 'upcoming';
 
     public bool $showModal = false;
     public bool $showDeleteModal = false;
@@ -66,6 +77,11 @@ class Index extends Component
     }
 
     public function updatedDateFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedTimeFilter(): void
     {
         $this->resetPage();
     }
@@ -298,6 +314,9 @@ class Index extends Component
 
     public function render()
     {
+        // Upcoming = soonest first (next appointments on top); past/all = newest first.
+        $sortDirection = $this->timeFilter === 'upcoming' ? 'asc' : 'desc';
+
         $appointments = Appointment::query()
             ->with(['service', 'user'])
             ->when(auth()->user()->hasRole('Customer'), fn($q) => $q->where('customer_email', auth()->user()->email))
@@ -309,7 +328,9 @@ class Index extends Component
             ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
             ->when($this->staffFilter, fn($q) => $q->where('user_id', $this->staffFilter))
             ->when($this->dateFilter, fn($q) => $q->whereDate('starts_at', $this->dateFilter))
-            ->orderBy('starts_at', 'desc')
+            ->when($this->timeFilter === 'upcoming', fn($q) => $q->where('starts_at', '>=', Carbon::now()))
+            ->when($this->timeFilter === 'past', fn($q) => $q->where('starts_at', '<', Carbon::now()))
+            ->orderBy('starts_at', $sortDirection)
             ->paginate(15);
 
         // Pre-load all grouped appointments for the current page in one query
@@ -349,6 +370,8 @@ class Index extends Component
                 ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
                 ->when($this->staffFilter, fn($q) => $q->where('user_id', $this->staffFilter))
                 ->when($this->dateFilter, fn($q) => $q->whereDate('starts_at', $this->dateFilter))
+                ->when($this->timeFilter === 'upcoming', fn($q) => $q->where('starts_at', '>=', Carbon::now()))
+                ->when($this->timeFilter === 'past', fn($q) => $q->where('starts_at', '<', Carbon::now()))
                 ->orderBy('starts_at', 'asc')
                 ->get()
                 ->groupBy('booking_group_id');

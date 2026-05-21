@@ -167,6 +167,71 @@ class AppointmentsIndexTest extends TestCase
         $this->assertSame('confirmed', $grouped->first()->first()->status);
     }
 
+    private function makeSoloAppointment(Service $service, User $staff, string $start, string $email = 'solo@example.com'): Appointment
+    {
+        $startsAt = Carbon::parse($start);
+        return Appointment::create([
+            'service_id' => $service->id,
+            'user_id' => $staff->id,
+            'customer_name' => 'Solo',
+            'customer_email' => $email,
+            'starts_at' => $startsAt,
+            'ends_at' => $startsAt->copy()->addMinutes($service->duration),
+            'status' => 'booked',
+            'booking_group_id' => null,
+        ]);
+    }
+
+    public function test_time_filter_defaults_to_upcoming_and_hides_past_appointments(): void
+    {
+        $this->actingAsSuperAdmin();
+        $service = $this->makeService();
+        $staff = $this->makeStaff($service);
+        $past = $this->makeSoloAppointment($service, $staff, Carbon::now()->subWeek()->toDateTimeString(), 'past@example.com');
+        $future = $this->makeSoloAppointment($service, $staff, Carbon::now()->addWeek()->toDateTimeString(), 'future@example.com');
+
+        $cmp = Livewire::test(AppointmentsIndex::class);
+
+        $this->assertSame('upcoming', $cmp->get('timeFilter'));
+        $ids = $cmp->viewData('appointments')->pluck('id');
+        $this->assertTrue($ids->contains($future->id), 'Upcoming appointment should be visible by default.');
+        $this->assertFalse($ids->contains($past->id), 'Past appointment should be hidden by default.');
+    }
+
+    public function test_time_filter_past_shows_only_past_appointments(): void
+    {
+        $this->actingAsSuperAdmin();
+        $service = $this->makeService();
+        $staff = $this->makeStaff($service);
+        $past = $this->makeSoloAppointment($service, $staff, Carbon::now()->subWeek()->toDateTimeString(), 'past@example.com');
+        $future = $this->makeSoloAppointment($service, $staff, Carbon::now()->addWeek()->toDateTimeString(), 'future@example.com');
+
+        $ids = Livewire::test(AppointmentsIndex::class)
+            ->set('timeFilter', 'past')
+            ->viewData('appointments')
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($past->id));
+        $this->assertFalse($ids->contains($future->id));
+    }
+
+    public function test_time_filter_empty_shows_all_appointments(): void
+    {
+        $this->actingAsSuperAdmin();
+        $service = $this->makeService();
+        $staff = $this->makeStaff($service);
+        $past = $this->makeSoloAppointment($service, $staff, Carbon::now()->subWeek()->toDateTimeString(), 'past@example.com');
+        $future = $this->makeSoloAppointment($service, $staff, Carbon::now()->addWeek()->toDateTimeString(), 'future@example.com');
+
+        $ids = Livewire::test(AppointmentsIndex::class)
+            ->set('timeFilter', '')
+            ->viewData('appointments')
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($past->id));
+        $this->assertTrue($ids->contains($future->id));
+    }
+
     public function test_ungrouped_appointment_is_not_affected_by_session_numbering(): void
     {
         $this->actingAsSuperAdmin();
