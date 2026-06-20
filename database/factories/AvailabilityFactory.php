@@ -4,7 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Availability;
 use App\Models\Service;
-use App\Models\Staff;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -25,7 +25,7 @@ class AvailabilityFactory extends Factory
         $endHour = $startHour + fake()->numberBetween(4, 8);
 
         return [
-            'staff_id' => Staff::factory(),
+            'user_id' => User::factory(),
             'service_id' => Service::factory(),
             'day_of_week' => fake()->numberBetween(0, 6),
             'start_time' => sprintf('%02d:00:00', $startHour),

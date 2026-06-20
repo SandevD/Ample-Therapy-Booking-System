@@ -17,6 +17,22 @@ class AppointmentsIndexTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Freeze "now" before the hardcoded 2026-06/07/08 fixture dates so the default
+        // 'upcoming' time filter treats them as future. Without this the tests rot:
+        // once the real clock passes a fixture date, the upcoming filter hides it.
+        Carbon::setTestNow('2026-05-01 09:00:00');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     private function makeUser(array $attrs = []): User
     {
         /** @var User $user */

@@ -49,7 +49,7 @@ class BookingWizardTest extends TestCase
     private function giveFullWeekAvailability(Service $service, User $staff): void
     {
         foreach (range(0, 6) as $day) {
-            Availability::create([
+            Availability::factory()->create([
                 'user_id' => $staff->id,
                 'service_id' => $service->id,
                 'day_of_week' => $day,
@@ -78,6 +78,7 @@ class BookingWizardTest extends TestCase
             'buffer_time' => 0,
         ]);
         $staff = $this->makeStaff($service);
+        $this->giveFullWeekAvailability($service, $staff);
         $customer = $this->makeUser();
         $this->actingAs($customer);
 
@@ -350,10 +351,62 @@ class BookingWizardTest extends TestCase
         $this->assertSame([], $cmp->instance()->timeSlots);
     }
 
+    public function test_submit_rejects_slot_outside_coach_availability(): void
+    {
+        $service = $this->makeSingleSessionService(duration: 60);
+        $staff = $this->makeStaff($service);
+        $this->giveFullWeekAvailability($service, $staff); // 09:00-17:00
+        $customer = $this->makeUser();
+        $this->actingAs($customer);
+
+        // 20:00 is well outside the coach's 09:00-17:00 window.
+        Livewire::test(Wizard::class)
+            ->call('selectService', $service->id)
+            ->call('selectStaff', $staff->id)
+            ->call('selectDateTime', '2026-06-01', '20:00')
+            ->call('submit')
+            ->assertHasErrors('selectedTime');
+
+        $this->assertDatabaseMissing('appointments', [
+            'user_id' => $staff->id,
+            'starts_at' => '2026-06-01 20:00:00',
+        ]);
+    }
+
+    public function test_submit_rejects_slot_conflicting_with_confirmed_appointment(): void
+    {
+        $service = $this->makeSingleSessionService(duration: 60);
+        $staff = $this->makeStaff($service);
+        $this->giveFullWeekAvailability($service, $staff);
+        $customer = $this->makeUser();
+        $this->actingAs($customer);
+
+        // Coach already has a CONFIRMED booking at 10:00 that day.
+        Appointment::create([
+            'service_id' => $service->id,
+            'user_id' => $staff->id,
+            'customer_name' => 'Existing',
+            'customer_email' => 'existing@example.com',
+            'starts_at' => Carbon::parse('2026-06-01 10:00:00'),
+            'ends_at' => Carbon::parse('2026-06-01 11:00:00'),
+            'status' => 'confirmed',
+        ]);
+
+        Livewire::test(Wizard::class)
+            ->call('selectService', $service->id)
+            ->call('selectStaff', $staff->id)
+            ->call('selectDateTime', '2026-06-01', '10:00')
+            ->call('submit')
+            ->assertHasErrors('selectedTime');
+
+        $this->assertSame(1, Appointment::where('user_id', $staff->id)->count());
+    }
+
     public function test_multi_session_submit_creates_appointments_with_same_booking_group_id(): void
     {
         $service = $this->makeMultiSessionService(sessions: 2);
         $staff = $this->makeStaff($service);
+        $this->giveFullWeekAvailability($service, $staff);
         $customer = $this->makeUser();
         $this->actingAs($customer);
 

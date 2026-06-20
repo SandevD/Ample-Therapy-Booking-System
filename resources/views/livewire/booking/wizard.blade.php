@@ -271,7 +271,8 @@
 
                 <div>
                     <flux:label>Available Slots</flux:label>
-                    <div class="grid grid-cols-3 gap-2 mt-2">
+                    {{-- Poll so a coach's mid-session availability change is reflected without a manual reload. --}}
+                    <div class="grid grid-cols-3 gap-2 mt-2" wire:poll.30s>
                         @foreach($this->timeSlots as $slot)
                             <button wire:click="selectDateTime('{{ $selectedDate }}', '{{ $slot['time'] }}')"
                                 @if(!$slot['is_bookable']) disabled @endif

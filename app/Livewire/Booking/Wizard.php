@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\Availability;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 
@@ -169,6 +170,54 @@ class Wizard extends Component
             ->first();
     }
 
+    /**
+     * Whether [time, time+duration] on $date fits inside the coach's availability window.
+     */
+    private function slotWithinAvailability(string $date, string $time, Service $service): bool
+    {
+        $availability = $this->availabilityFor($date);
+        if (!$availability) {
+            return false;
+        }
+
+        $startsAt = Carbon::parse($date . ' ' . $time);
+        $endsAt   = $startsAt->copy()->addMinutes($service->duration);
+        $windowStart = Carbon::parse($date . ' ' . $availability->start_time->format('H:i'));
+        $windowEnd   = Carbon::parse($date . ' ' . $availability->end_time->format('H:i'));
+
+        return $startsAt->gte($windowStart) && $endsAt->lte($windowEnd);
+    }
+
+    /**
+     * Server-side booking guard. Mirrors the UI's "bookable" rule: the slot must be
+     * inside the coach's availability and must not collide with a CONFIRMED appointment
+     * (pending/booked overlaps are allowed — staff confirm one later).
+     */
+    private function ensureSlotBookable(string $date, ?string $time, Service $service, string $field): void
+    {
+        $bookable = $time
+            && $this->slotWithinAvailability($date, $time, $service)
+            && !$this->hasConfirmedConflict($date, $time, $service);
+
+        if (!$bookable) {
+            throw ValidationException::withMessages([
+                $field => 'That time is outside the coach\'s availability or no longer available. Please pick another slot.',
+            ]);
+        }
+    }
+
+    private function hasConfirmedConflict(string $date, string $time, Service $service): bool
+    {
+        $startsAt = Carbon::parse($date . ' ' . $time);
+        $endsAt   = $startsAt->copy()->addMinutes($service->duration);
+
+        return Appointment::where('user_id', $this->selectedStaffId)
+            ->where('status', 'confirmed')
+            ->where('starts_at', '<', $endsAt)
+            ->where('ends_at', '>', $startsAt)
+            ->exists();
+    }
+
     private function isSlotAvailable(string $date, string $time, Service $service): bool
     {
         $startsAt = Carbon::parse($date . ' ' . $time);
@@ -238,6 +287,10 @@ class Wizard extends Component
                 'selectedTime'      => 'required',
             ]);
 
+            // Server-side guard: never trust the client. The slot must fall inside the
+            // coach's saved availability and not collide with a confirmed booking.
+            $this->ensureSlotBookable($this->selectedDate, $this->selectedTime, $service, 'selectedTime');
+
             $startsAt = Carbon::parse($this->selectedDate . ' ' . $this->selectedTime);
             $endsAt   = $startsAt->copy()->addMinutes($service->duration);
 
@@ -259,6 +312,11 @@ class Wizard extends Component
                 'selectedStaffId'   => 'required',
                 'selectedSlots'     => 'required|array|min:' . $service->session_count,
             ]);
+
+            // Guard every selected slot before creating any of them.
+            foreach ($this->selectedSlots as $slot) {
+                $this->ensureSlotBookable($slot['date'], $slot['time'], $service, 'selectedSlots');
+            }
 
             $groupId = Str::uuid()->toString();
 
