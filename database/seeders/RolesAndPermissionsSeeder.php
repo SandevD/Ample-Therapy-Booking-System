@@ -48,6 +48,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'edit_users' => 'Edit user accounts',
             'delete_users' => 'Delete users',
             'manage_roles' => 'Manage roles and permissions',
+
+            // Activity Log
+            'view_activity_log' => 'View the system activity log',
         ];
 
         // Create permissions

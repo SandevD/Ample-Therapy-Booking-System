@@ -5,6 +5,7 @@ namespace App\Livewire\Booking;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Appointment;
+use App\Models\Availability;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -154,13 +155,33 @@ class Wizard extends Component
         };
     }
 
+    /**
+     * The coach's recurring availability for the selected staff + service on the
+     * weekday of $date, or null if the coach has no availability that day.
+     */
+    private function availabilityFor(string $date): ?Availability
+    {
+        return Availability::query()
+            ->where('user_id', $this->selectedStaffId)
+            ->where('service_id', $this->selectedServiceId)
+            ->where('day_of_week', Carbon::parse($date)->dayOfWeek)
+            ->where('is_recurring', true)
+            ->first();
+    }
+
     private function isSlotAvailable(string $date, string $time, Service $service): bool
     {
         $startsAt = Carbon::parse($date . ' ' . $time);
         $endsAt   = $startsAt->copy()->addMinutes($service->duration);
 
-        $businessStart = Carbon::parse($date . ' 09:00:00');
-        $businessEnd   = Carbon::parse($date . ' 17:00:00');
+        // Honour the coach's saved availability window; no row => not available that day.
+        $availability = $this->availabilityFor($date);
+        if (!$availability) {
+            return false;
+        }
+
+        $businessStart = Carbon::parse($date . ' ' . $availability->start_time->format('H:i'));
+        $businessEnd   = Carbon::parse($date . ' ' . $availability->end_time->format('H:i'));
         if ($startsAt->lt($businessStart) || $endsAt->gt($businessEnd)) {
             return false;
         }
@@ -269,10 +290,18 @@ class Wizard extends Component
             return [];
         }
 
+        // The coach's saved availability for this staff/service on this weekday is the
+        // single source of truth for bookable hours. No availability row => coach is
+        // closed that day, so there are no slots.
+        $availability = $this->availabilityFor($this->selectedDate);
+        if (!$availability) {
+            return [];
+        }
+
         $service  = Service::find($this->selectedServiceId);
         $slots    = [];
-        $current  = Carbon::parse($this->selectedDate . ' 09:00:00');
-        $endOfDay = Carbon::parse($this->selectedDate . ' 17:00:00');
+        $current  = Carbon::parse($this->selectedDate . ' ' . $availability->start_time->format('H:i'));
+        $endOfDay = Carbon::parse($this->selectedDate . ' ' . $availability->end_time->format('H:i'));
 
         // Existing DB appointments for this staff member on this day
         $appointments = Appointment::where('user_id', $this->selectedStaffId)

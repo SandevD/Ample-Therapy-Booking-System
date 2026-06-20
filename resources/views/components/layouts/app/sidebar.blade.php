@@ -101,6 +101,11 @@
                     <flux:navlist.item icon="key" href="{{ route('admin.roles') }}"
                         :current="request()->routeIs('admin.roles')" wire:navigate>
                         Roles</flux:navlist.item>
+                    @can('view_activity_log')
+                    <flux:navlist.item icon="clipboard-document-list" href="{{ route('admin.activity-log') }}"
+                        :current="request()->routeIs('admin.activity-log')" wire:navigate>
+                        Activity Log</flux:navlist.item>
+                    @endcan
                 </flux:navlist>
                 @endhasrole
             </div>

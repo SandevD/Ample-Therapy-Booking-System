@@ -37,6 +37,12 @@ class Password extends Component
             'password' => $validated['password'],
         ]);
 
+        activity('auth')
+            ->causedBy(Auth::user())
+            ->performedOn(Auth::user())
+            ->event('password_changed')
+            ->log('Password changed');
+
         $this->reset('current_password', 'password', 'password_confirmation');
 
         $this->dispatch('password-updated');

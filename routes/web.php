@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Admin\ActivityLog\Index as ActivityLogIndex;
 use App\Livewire\Admin\Admins\Index as AdminsIndex;
 use App\Livewire\Admin\Appointments\Index as AppointmentsIndex;
 use App\Livewire\Admin\Customers\Index as CustomersIndex;
@@ -27,6 +28,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Administration
     Route::get('admins', AdminsIndex::class)->name('admin.admins');
     Route::get('roles', RolesIndex::class)->name('admin.roles');
+    Route::get('activity-log', ActivityLogIndex::class)
+        ->middleware('can:view_activity_log')
+        ->name('admin.activity-log');
 
     // Customer Booking
     Route::get('booking', \App\Livewire\Booking\Wizard::class)->name('booking.wizard');

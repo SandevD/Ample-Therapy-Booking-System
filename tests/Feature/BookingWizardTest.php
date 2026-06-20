@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Booking\Wizard;
 use App\Models\Appointment;
+use App\Models\Availability;
 use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
@@ -43,6 +44,20 @@ class BookingWizardTest extends TestCase
             'session_count' => $sessions,
             'buffer_time' => 0,
         ]);
+    }
+
+    private function giveFullWeekAvailability(Service $service, User $staff): void
+    {
+        foreach (range(0, 6) as $day) {
+            Availability::create([
+                'user_id' => $staff->id,
+                'service_id' => $service->id,
+                'day_of_week' => $day,
+                'start_time' => '09:00',
+                'end_time' => '17:00',
+                'is_recurring' => true,
+            ]);
+        }
     }
 
     public function test_booking_wizard_can_render(): void
@@ -147,6 +162,7 @@ class BookingWizardTest extends TestCase
     {
         $service = $this->makeMultiSessionService(sessions: 5);
         $staff = $this->makeStaff($service);
+        $this->giveFullWeekAvailability($service, $staff);
         $this->actingAs($this->makeUser());
 
         $cmp = Livewire::test(Wizard::class)
@@ -175,6 +191,7 @@ class BookingWizardTest extends TestCase
     {
         $service = $this->makeMultiSessionService(sessions: 3);
         $staff = $this->makeStaff($service);
+        $this->giveFullWeekAvailability($service, $staff);
         $this->actingAs($this->makeUser());
 
         $cmp = Livewire::test(Wizard::class)
@@ -194,6 +211,7 @@ class BookingWizardTest extends TestCase
     {
         $service = $this->makeMultiSessionService(sessions: 3);
         $staff = $this->makeStaff($service);
+        $this->giveFullWeekAvailability($service, $staff);
         $this->actingAs($this->makeUser());
 
         // Existing CONFIRMED appointment on 2026-06-08 10:00 — auto-fill should skip this date.
@@ -225,6 +243,7 @@ class BookingWizardTest extends TestCase
     {
         $service = $this->makeMultiSessionService(sessions: 2);
         $staff = $this->makeStaff($service);
+        $this->giveFullWeekAvailability($service, $staff);
         $this->actingAs($this->makeUser());
 
         Appointment::create([
@@ -263,6 +282,72 @@ class BookingWizardTest extends TestCase
             ->call('removeSlot', 0);
 
         $this->assertSame([], $cmp->get('autoFillSkipped'));
+    }
+
+    private function makeSingleSessionService(int $duration = 60): Service
+    {
+        return Service::create([
+            'name' => 'Consult',
+            'duration' => $duration,
+            'price' => 100,
+            'color' => '#ff00ff',
+            'is_active' => true,
+            'session_count' => 1,
+            'buffer_time' => 0,
+        ]);
+    }
+
+    public function test_time_slots_use_coach_availability_window(): void
+    {
+        $service = $this->makeSingleSessionService(duration: 60);
+        $staff = $this->makeStaff($service);
+        $this->actingAs($this->makeUser());
+
+        // Coach is available 13:00-15:00 on the booking date's weekday.
+        $date = '2026-06-01';
+        Availability::create([
+            'user_id' => $staff->id,
+            'service_id' => $service->id,
+            'day_of_week' => Carbon::parse($date)->dayOfWeek,
+            'start_time' => '13:00',
+            'end_time' => '15:00',
+            'is_recurring' => true,
+        ]);
+
+        $cmp = Livewire::test(Wizard::class)
+            ->call('selectService', $service->id)
+            ->call('selectStaff', $staff->id)
+            ->set('selectedDate', $date);
+
+        $times = collect($cmp->instance()->timeSlots)->pluck('time')->all();
+
+        // Only slots within the coach's window — not the old hardcoded 09:00-17:00.
+        $this->assertSame(['13:00', '14:00'], $times);
+    }
+
+    public function test_no_time_slots_when_coach_has_no_availability_that_day(): void
+    {
+        $service = $this->makeSingleSessionService(duration: 60);
+        $staff = $this->makeStaff($service);
+        $this->actingAs($this->makeUser());
+
+        // Availability exists only for a DIFFERENT weekday than the booking date.
+        $date = '2026-06-01';
+        Availability::create([
+            'user_id' => $staff->id,
+            'service_id' => $service->id,
+            'day_of_week' => Carbon::parse($date)->addDay()->dayOfWeek,
+            'start_time' => '09:00',
+            'end_time' => '17:00',
+            'is_recurring' => true,
+        ]);
+
+        $cmp = Livewire::test(Wizard::class)
+            ->call('selectService', $service->id)
+            ->call('selectStaff', $staff->id)
+            ->set('selectedDate', $date);
+
+        $this->assertSame([], $cmp->instance()->timeSlots);
     }
 
     public function test_multi_session_submit_creates_appointments_with_same_booking_group_id(): void
